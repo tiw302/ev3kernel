@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="assets/logo.png" alt="EV3Kernel Logo" width="750">
-  <br>
+  <br><br>
   <a href="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml"><img src="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml/badge.svg" alt="Code Quality & Syntax Check"></a>
   <img src="https://img.shields.io/badge/Python-3.10-blue.svg" alt="Python 3.10">
   <img src="https://img.shields.io/github/last-commit/tiw302/ev3kernel" alt="Last Commit">
