@@ -5,6 +5,7 @@
   <br><br>
   <a href="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml"><img src="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml/badge.svg" alt="Code Quality & Syntax Check"></a>
   <img src="https://img.shields.io/badge/Python-3.10-blue.svg" alt="Python 3.10">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
   <img src="https://img.shields.io/github/last-commit/tiw302/ev3kernel" alt="Last Commit">
 </div>
 
@@ -12,7 +13,8 @@
 
 **English** | [ภาษาไทย](README_TH.md)
 
-> **＞ Project Status: Active Development & LTS until 2029**
+> [!NOTE]
+> **Project Status: Active Development & LTS until 2029**
 > This is not a fire-and-forget project. This kernel will be continuously refined and updated based on real-world competition experience every year until I enter university in 2029. You can expect long-term support and stability.
 
 ---
@@ -33,10 +35,38 @@ The framework is engineered to resolve common hardware and software bottlenecks 
 ---
 
 ## Table of Contents
-| Concept | System Core | Navigation | Resources |
-|---|---|---|---|
-| [Philosophy](#navigation-theory--mathematics) | [Architecture](#system-architecture) | [PID Control](#1-pidv2-proportional-integral-derivative) | [Pre-match Setup](#pre-match-checklist) |
-| [Quick Start](#quick-start) | [Memory Optimization](#performance-optimization) | [Sensor Processing](#2-line-tracking--perception) | [API Reference](#api-reference) |
+- **Core Concepts**
+  - [Hardware Requirements](#hardware-requirements)
+  - [Repository Structure](#repository-structure)
+  - [Quick Start](#quick-start)
+  - [Navigation Theory & Mathematics](#navigation-theory--mathematics)
+- **System Core**
+  - [Architecture Overview](#system-architecture)
+  - [Performance Optimization](#performance-optimization)
+- **Navigation & Control**
+  - [PIDv2 Control](#1-pidv2-proportional-integral-derivative)
+  - [Line Tracking & Perception](#2-line-tracking--perception)
+- **Resources**
+  - [Pre-match Checklist](#pre-match-checklist)
+  - [API Reference](#api-reference)
+
+---
+
+## Hardware Requirements
+This kernel is highly optimized specifically for classic LEGO hardware following the standard WRO wiring diagram:
+*   **Hub:** LEGO MINDSTORMS EV3 Brick
+*   **Drive:** 2x EV3 Large Motors (Ports B & C)
+*   **Attachments:** 2x EV3 Medium/Large Motors (Ports A & D)
+*   **Sensor Array:** 4x EV3 Color Sensors (Ports 1, 2, 3 & 4) configured for dynamic multi-pair line tracking (e.g., using pairs 2-3 for straight tracking, and 1-2 or 3-4 for complex WRO maneuvers).
+
+> [!TIP]
+> **Are you using SPIKE Prime or Robot Inventor?**
+> Modern hubs feature a built-in Gyro sensor. We highly recommend using our sister project specifically engineered for SPIKE Prime here: **[🚀 tiw302/spikekernel](https://github.com/tiw302/spikekernel)** *(Currently in active development with native Gyro Control).*
+
+## Repository Structure
+*   `main.py` - The core monolith kernel. (Copy and paste this single file to the IDE to run).
+*   `debug.py` - A dashboard UI script to read and tune sensor values in real-time.
+*   `generate_wiring_diagram.py` - A Python script to generate the hardware wiring diagram.
 
 ---
 
@@ -103,7 +133,7 @@ This kernel expects a standardized hardware layout to ensure optimal geometry ca
 
 ## Quick Start & Installation
 
-1. **Firmware Setup:** This kernel bypasses the stock LEGO firmware. You must flash the [Pybricks EV3 firmware](https://pybricks.com/install/ev3/) onto a MicroSD card and boot your EV3 from it.
+1. **Firmware Setup:** This kernel bypasses the stock LEGO firmware. You must install the **[Pybricks 4.0 firmware](https://beta.pybricks.com/)** on your EV3 (Installation can now be done directly via the web browser, no MicroSD card required).
 2. **Execution Workflow:**
    * Write and maintain your code locally using **VS Code**.
    * When ready to run, simply copy and paste the entire code into the [Pybricks Beta Web IDE](https://beta.pybricks.com/) and execute it instantly via a USB cable. (Zero deployment overhead).
@@ -129,7 +159,9 @@ This kernel expects a standardized hardware layout to ensure optimal geometry ca
 |---|---|---|
 | `drive_until_line` | `speed, align=True` | Drive forward until a line is detected, optionally auto-squaring against it. |
 | `align_line` | `time_ms` | Square the robot against a transverse black line using dual light sensors. |
-| `track_line` | `speed, kp, kd` | Continuous line following using PD control on the line edge. |
+| `track_line` | `speed, kp, kd` | Follows the line using PD control until an intersection is detected. |
+| `track_line_distance` | `distance_cm, speed` | Follows the line using PD control for a specific distance. |
+| `track_line_timer` | `time_ms, speed` | Follows the line using PD control for a specific amount of time. |
 | `normalize` | `raw_value` | Maps raw light reflection to a calibrated `[0, 100]` percentage. |
 
 ### 3. Attachments & Grippers
@@ -234,11 +266,12 @@ else:
 ### System Benchmarks
 Objective architectural results achieved by abandoning standard OOP patterns in favor of a Zero-Allocation Kernel on EV3 hardware:
 
-| Metric | Standard MicroPython Code | `ev3kernel` (Zero-Allocation) |
+| Metric | Stock Software (EV3-G / Classroom) | `ev3kernel` (Pybricks) |
 |---|---|---|
-| **RAM Footprint** | Susceptible to OOM crashes over time | Constant ~200KB (via `__slots__`) |
-| **PID Loop Jitter** | Random 10-30ms spikes from GC cycles | Stable and smooth (GC-Free) |
-| **Deployment** | Multi-file imports (RAM heavy / slow) | Single-file Monolith (Instant copy-paste) |
+| **RAM Footprint** | Massive RAM usage, frequent crashes | Constant ~200KB (via `__slots__`) |
+| **Control Loop** | Slow execution & inconsistent loop rate | Ultra-stable & smooth (GC-Free, ms precision) |
+| **Deployment** | Heavy compilation & slow sync times | Single-file Monolith (Instant execution via Web IDE) |
+| **Battery Efficiency** | High drain due to heavy stock OS overhead | Exceptional battery life (Bare-metal + Kernel optimization) |
 
 ### Zero-Allocation Hot Loops
 In MicroPython, instantiating new objects (e.g., calling `print`, concatenating strings) triggers the Garbage Collector (GC), causing random 10-30ms stutters in the robot's motion. *(Source: [`main.py#L639-L689`](./main.py#L639-L689) \| Ref: [MicroPython Docs](https://docs.micropython.org/en/latest/reference/constrained.html#memory))*
