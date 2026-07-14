@@ -26,12 +26,12 @@
     port s4 = sensor 4 (far right)
 
 * algorithms & optimizations used (international-level):
-    pidv2:         derivative-on-measurement + ema filter + back-calc anti-windup
-    trapprofile:   accel -> cruise -> decel (trapezoidal velocity profile)
-    deadband comp: compensates for ev3 medium motor stiction at low speeds
-    normalized:    maps sensor.reflection() -> [0,100] using real black/white values
-    zero-alloc:    method caching to eradicate garbage collection (gc) in hot loops
-    memory opt:    uses __slots__ and const() for minimal ram footprint (~200kb)
+    PIDv2         : derivative-on-measurement + ema filter + back-calc anti-windup
+    TrapProfile   : accel -> cruise -> decel (trapezoidal velocity profile)
+    Deadband Comp : compensates for ev3 medium motor stiction at low speeds
+    Normalized    : maps sensor.reflection() -> [0,100] using real black/white values
+    Zero-Alloc    : method caching to eradicate garbage collection (gc) in hot loops
+    Memory Opt    : uses __slots__ and const() for minimal ram footprint (~200kb)
 
 * pre-match checklist:
     1. update wheel_diameter_mm / axle_track_mm to match the physical robot
@@ -53,12 +53,12 @@
     port S4 = เซ็นเซอร์ 4 (ขวาสุด)
 
 * algorithms & optimizations ที่ใช้ (international-level):
-    PIDv2:         derivative-on-measurement + ema filter + back-calc anti-windup
-    TrapProfile:   accel -> cruise -> decel (trapezoidal velocity profile)
-    Deadband Comp: ชดเชย EV3 medium motor stiction ตอนความเร็วต่ำ
-    Normalized:    map sensor.reflection() -> [0,100] ด้วยค่า black/white จริง
-    Zero-Alloc:    เทคนิค Cache ลบปัญหา Garbage Collection กระตุกตอนหุ่นวิ่ง
-    Memory Opt:    รีด RAM ด้วย __slots__ และ const() ทำงานไว ประหยัดแบต
+    PIDv2         : derivative-on-measurement + ema filter + back-calc anti-windup
+    TrapProfile   : accel -> cruise -> decel (trapezoidal velocity profile)
+    Deadband Comp : ชดเชย EV3 medium motor stiction ตอนความเร็วต่ำ
+    Normalized    : map sensor.reflection() -> [0,100] ด้วยค่า black/white จริง
+    Zero-Alloc    : เทคนิค Cache ลบปัญหา Garbage Collection กระตุกตอนหุ่นวิ่ง
+    Memory Opt    : รีด RAM ด้วย __slots__ และ const() ทำงานไว ประหยัดแบต
 
 * ก่อนแข่ง:
     1. แก้ WHEEL_DIAMETER_MM / AXLE_TRACK_MM ให้ตรงหุ่น
