@@ -684,6 +684,91 @@ class Robot:
         self.stop_drive(hold=True)
         self.log("Done: track line (intersection detected)")
 
+    def track_line_distance(self, distance_cm, speed=40, kp=1.5, kd=0.5, left_sensor='2', right_sensor='3'):
+        """
+        follows a line for a specific distance (in cm).
+        distance_cm: distance to travel (cm).
+        """
+        self.log(f"Start: track line dist {distance_cm}cm at {speed}%")
+        self.reset_encoders()
+        
+        distance_mm = distance_cm * 10
+        target = abs(distance_mm) / WHEEL_CIRC * 360.0 * DISTANCE_CORRECTION
+        
+        ls = getattr(self, f"sensor_{left_sensor}")
+        rs = getattr(self, f"sensor_{right_sensor}")
+        ls_ref = ls.reflection
+        rs_ref = rs.reflection
+        
+        l_run = self.left_motor.run
+        r_run = self.right_motor.run
+        avg_ang = self.avg_angle
+        
+        base_spd = speed * 10
+        last_error = 0
+        
+        while avg_ang() < target:
+            l_val = ls_ref()
+            r_val = rs_ref()
+            
+            # pd calculation (straddling line)
+            error = l_val - r_val
+            derivative = error - last_error
+            turn = (error * kp) + (derivative * kd)
+            
+            l_spd = base_spd + turn
+            r_spd = base_spd - turn
+            
+            l_run(-l_spd)
+            r_run(r_spd)
+            
+            last_error = error
+            wait(10)
+            
+        self.stop_drive(hold=True)
+        self.log(f"Done: track line dist {distance_cm}cm")
+
+    def track_line_timer(self, time_ms, speed=40, kp=1.5, kd=0.5, left_sensor='2', right_sensor='3'):
+        """
+        follows a line for a specific amount of time (in milliseconds).
+        time_ms: time to travel (ms).
+        """
+        self.log(f"Start: track line timer {time_ms}ms at {speed}%")
+        sw = StopWatch()
+        sw_time = sw.time
+        
+        ls = getattr(self, f"sensor_{left_sensor}")
+        rs = getattr(self, f"sensor_{right_sensor}")
+        ls_ref = ls.reflection
+        rs_ref = rs.reflection
+        
+        l_run = self.left_motor.run
+        r_run = self.right_motor.run
+        
+        base_spd = speed * 10
+        last_error = 0
+        
+        while sw_time() < time_ms:
+            l_val = ls_ref()
+            r_val = rs_ref()
+            
+            # pd calculation (straddling line)
+            error = l_val - r_val
+            derivative = error - last_error
+            turn = (error * kp) + (derivative * kd)
+            
+            l_spd = base_spd + turn
+            r_spd = base_spd - turn
+            
+            l_run(-l_spd)
+            r_run(r_spd)
+            
+            last_error = error
+            wait(10)
+            
+        self.stop_drive(hold=True)
+        self.log(f"Done: track line timer {time_ms}ms")
+
 #    _   _    ___ ___ _  _   _    ___ _  _ ___
 #   /_\ | |  |_ _/ __| \| | | |  |_ _| \| | __|
 #  / _ \| |__ | | (_ | .` | | |__ | || .` | _|
@@ -851,6 +936,9 @@ class Robot:
         self.log(f"BATTERY: {volts:.2f}V ({percent:.0f}%) | CURRENT: {amps:.2f}A")
 
     def log(self, text):
+        # * NOTE: to reduce cpu load during a real match, uncomment 'pass' and comment out 'print'
+        # *       เพื่อลดภาระ CPU ตอนแข่งจริง (เซฟแบต/ลดแลค) ให้เอา # หน้าคำว่า pass ออก และใส่ # หน้า print แทน
+        # pass
         print(f"[ROBOT] {text}")
 
 #  __  __    _    ___ _   _   _     ___   ___  ____  
@@ -886,8 +974,13 @@ if __name__ == "__main__":
         # robot.drive_until_line(speed=40, align=True)  # วิ่งไปหาเส้นดำ เจอแล้วเทียบเส้นให้ตรงอัตโนมัติ (drive until black line and auto-align)
         # robot.align_line(time_ms=1500)                # สั่งเทียบเส้นดำเฉยๆ เป็นเวลา 1.5 วิ (align to the line for 1.5s)
         
-        # หมายเหตุ: track_line ตอนนี้เป็นลูปอนันต์ ต้องปรับแก้ถ้าจะใช้ในภารกิจจริง (note: track_line is currently an infinite loop)
+        # หมายเหตุ: track_line ตอนนี้เป็นการเกาะเส้นจนกว่าจะเจอทางแยก (stops at intersection)
         # robot.track_line(speed=40, kp=1.5, kd=0.5) 
+        # robot.track_line_distance(15, speed=40)       # เกาะเส้นไปข้างหน้าเป็นระยะ 15 ซม. (track line for 15 cm)
+        # robot.track_line_timer(2000, speed=40)        # เกาะเส้นไปข้างหน้าเป็นเวลา 2 วินาที (track line for 2000 ms)
+        
+        # ตัวอย่างการเกาะเส้นแบบสลับเซนเซอร์ (dynamic sensor tracking)
+        # robot.track_line_distance(15, left_sensor='1', right_sensor='2') # ใช้เซนเซอร์ 1 และ 2 เกาะเส้น (track with sensors 1 and 2)
         
         # 5. การบังคับมอเตอร์แขนกล (grippers)
         # robot.lift_d(speed=80, power=80)              # ยกแขน D ลงคีบด้วยแรงดัน 80% (lower arm D to grip)
@@ -898,7 +991,9 @@ if __name__ == "__main__":
         # 6. คำสั่งอื่นๆ (misc)
         # robot.drive(300, 300)                         # สั่งมอเตอร์วิ่งตรงๆ ความเร็ว 300 องศา/วิ (drive motors raw at 300 deg/s)
         # robot.stop_drive(hold=True)                   # สั่งเบรกและล็อกล้อ (stop and hold wheels)
+        # robot.reset_encoders()                        # รีเซ็ตค่าองศาล้อให้เป็น 0 (reset motor encoders to 0)
         # robot.check_battery()                         # เช็คแบตเตอรี่พิมพ์ออกจอคอม (print battery status to console)
+        # offset = robot.calibrate_2sensor_offset()     # หมุนซ้ายขวาเพื่อหาค่าชดเชยเซนเซอร์ให้เท่ากัน (calibrate sensor offset)
     
     #   * ===============================================
     #   *  RUN: รันตรงนี้
