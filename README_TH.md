@@ -4,14 +4,16 @@
   <img src="assets/logo.png" alt="EV3Kernel Logo" width="750">
   <br><br>
   <a href="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml"><img src="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml/badge.svg" alt="Code Quality & Syntax Check"></a>
-  <img src="https://img.shields.io/badge/Python-3.10-blue.svg" alt="Python 3.10">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/github/last-commit/tiw302/ev3kernel" alt="Last Commit">
+  <img src="https://img.shields.io/badge/MicroPython-v1.20-blue.svg?logo=micropython&logoColor=white" alt="MicroPython v1.20">
+  <img src="https://img.shields.io/badge/Pybricks-4.0_Beta-9b59b6.svg" alt="Pybricks 4.0">
+  <img src="https://img.shields.io/badge/Python-3.10-3776AB.svg?logo=python&logoColor=white" alt="Python 3.10">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?logo=opensourceinitiative&logoColor=white" alt="License"></a>
+  <img src="https://img.shields.io/github/last-commit/tiw302/ev3kernel?logo=github&logoColor=white" alt="Last Commit">
 </div>
 
-### เอกสารอ้างอิงทางวิศวกรรมและระบบควบคุม
+### เอกสารอ้างอิงทางวิศวกรรมและระบบควบคุม (Engineering Whitepaper & System Documentation)
 
-[English Edition](README.md) | **ภาษาไทย**
+[English](README.md) | **ภาษาไทย**
 
 > [!NOTE]
 > **Project Status: Active Development & LTS until 2029**
@@ -179,10 +181,10 @@ graph TD
 ## หลักการทางคณิตศาสตร์และทฤษฎีการเดินรถ
 
 ### 1. ระบบควบคุม PIDv2 (Proportional-Integral-Derivative)
-เราได้พัฒนาระบบ PID ขั้นสูงเพื่อป้องกันข้อผิดพลาดที่มักเกิดในหุ่นยนต์ทั่วไป *(อ้างอิงโค้ด: [`main.py#L113-L168`](./main.py#L113-L168) \| ทฤษฎี: [Wikipedia](https://en.wikipedia.org/wiki/Proportional%E2%80%93integral%E2%80%93derivative_controller))* :
-*   **Derivative on Measurement:** ป้องกันอาการกระตุกรุนแรง (Derivative kick) เมื่อเป้าหมายเปลี่ยนกะทันหัน
-*   **EMA Filter (Exponential Moving Average):** กรองสัญญาณรบกวน (Noise) จากเซนเซอร์แสง EV3 ก่อนนำไปคำนวณ
-*   **Back-calculation Anti-windup:** ป้องกันไม่ให้ค่า Integral สะสมตัวจนล้นเมื่อมอเตอร์เกิดอาการติดขัด
+เราได้พัฒนาระบบ PID ขั้นสูงเพื่อป้องกันข้อผิดพลาดที่มักเกิดในหุ่นยนต์ทั่วไป โดยใช้เทคนิค **Inlining** ฝังสมการลงในฟังก์ชันขับเคลื่อนโดยตรง (เช่น `move_straight`) เพื่อลดภาระ CPU (Zero-Allocation) และทำให้หุ่นทำงานได้ที่ความถี่ 1,000Hz *(ทฤษฎี: [Wikipedia](https://en.wikipedia.org/wiki/Proportional%E2%80%93integral%E2%80%93derivative_controller))* :
+*   **Derivative on Measurement (Inlined):** ป้องกันอาการกระตุกรุนแรง (Derivative kick) เมื่อเป้าหมายเปลี่ยนกะทันหัน
+*   **EMA Filter (Inlined):** กรองสัญญาณรบกวน (Noise) จากเซนเซอร์แสง EV3 ก่อนนำไปคำนวณ
+*   **Back-calculation Anti-windup (Inlined):** ป้องกันไม่ให้ค่า Integral สะสมตัวจนล้นเมื่อมอเตอร์เกิดอาการติดขัด
 
 <div align="center">
   <img src="./assets/pid_response.gif" alt="PID Animation" width="600">
@@ -261,6 +263,32 @@ else:
 ```
 </details>
 
+### 4. การตั้งลำและจัดระเบียบหุ่นอัตโนมัติ (Auto-Squaring & Synchronization)
+เพื่อแก้ปัญหาการวางหุ่นเอียง หรือการสะสมค่าความคลาดเคลื่อนกลางสนาม เราใช้เทคนิคการซิงค์มอเตอร์เพื่อรีเซ็ตองศา (Heading Reset):
+*   **Wall Squaring (ชนกำแพงตั้งลำ):** ใช้ P-Controller ควบคุมค่าองศาล้อ (Encoder) ซ้ายและขวาให้เท่ากันตลอดเวลาขณะขับชนกำแพง (`sync_err = left_angle - right_angle`) ป้องกันไม่ให้หุ่นบิดตัวเมื่อเกิดอาการมอเตอร์หยุดชะงัก (Stall)
+*   **Line Squaring (จัดหน้ากระดานด้วยเส้นขวาง):** อ่านเซ็นเซอร์สีซ้าย-ขวาอย่างเป็นอิสระต่อกัน ล้อข้างที่เซ็นเซอร์เจอเส้นดำก่อนจะหยุดและล็อกทันที ในขณะที่ล้ออีกข้างจะหมุนต่อไปจนกว่าจะเจอเส้น ทำให้หุ่นปรับหน้ากระดานตั้งฉากกับเส้นแบบ 100% กลางสนาม
+
+<div align="center">
+  <img src="./assets/auto_squaring.gif" alt="Auto Squaring Animation" width="600">
+  <p><em>กราฟจำลองการทำ Line Squaring ล้อซ้ายชนเส้นและเบรกก่อน ปล่อยล้อขวาเดินต่อจนกว่าหุ่นจะขนานกับเส้นขวาง</em></p>
+</div>
+
+<details>
+<summary><b>[+] ดูลอจิก P-Controller การชนกำแพงและเบรกอิสระ</b></summary>
+
+```text
+// 1. Proportional Wall Squaring
+sync_error = Left_Motor_Angle - Right_Motor_Angle
+correction = Kp * sync_error
+Left_Motor_Power = Base_Power - correction
+Right_Motor_Power = Base_Power + correction
+
+// 2. Independent Line Squaring
+if (Left_Sensor_Sees_Black)  -> Stop Left Motor
+if (Right_Sensor_Sees_Black) -> Stop Right Motor
+```
+</details>
+
 ---
 
 ## การเพิ่มประสิทธิภาพ (Performance Optimization)
@@ -275,11 +303,12 @@ else:
 | **Deployment** | รอคอมไพล์และซิงค์โปรแกรมนานมาก | Monolith ไฟล์เดียว (รันโค้ดผ่านเว็บได้ทันทีระดับวินาที) |
 | **Battery Efficiency** | แบตหมดไวเพราะรันบน OS ที่หนัก (Linux) | ประหยัดแบตขั้นสุด (รันบน Bare-metal + โค้ดรีดประสิทธิภาพ) |
 
-### Zero-Allocation Hot Loops
-ในระบบ MicroPython การสร้างออบเจกต์ใหม่ (เช่น การใช้คำสั่ง `print` หรือการต่อ String) จะไปกระตุ้นระบบกำจัดขยะ (Garbage Collector) ซึ่งทำให้หุ่นยนต์กระตุกแบบสุ่ม (10-30 มิลลิวินาที) *(อ้างอิงโค้ด: [`main.py#L639-L689`](./main.py#L639-L689) \| อ้างอิง: [MicroPython Docs](https://docs.micropython.org/en/latest/reference/constrained.html#memory))*
+### Zero-Allocation Hot Loops & Deterministic GC
+ในระบบ MicroPython การสร้างออบเจกต์ใหม่ (เช่น การใช้คำสั่ง `print` หรือการต่อ String) จะไปกระตุ้นระบบกำจัดขยะ (Garbage Collector) ซึ่งทำให้เกิดอาการ CPU ค้างชั่วขณะ (Jitter ประมาณ 5-10 มิลลิวินาที) ส่งผลให้หุ่นยนต์กระตุกแบบสุ่มขณะวิ่งหรือเกาะเส้น *(อ้างอิง: [MicroPython Docs](https://docs.micropython.org/en/latest/reference/constrained.html#memory))*
 
 *   คำสั่ง `print()` ทั้งหมดถูกกวาดล้างออกจากลูปการทำงานหลัก (Hot loops) อย่างเด็ดขาด
 *   เก็บค่าตัวแปรและ Method ของฮาร์ดแวร์ไว้ในหน่วยความจำ Cache เพื่อลดภาระของ CPU
+*   **Zero-Jitter Control:** เราควบคุม Garbage Collector แบบเบ็ดเสร็จ โดยสั่งล้างขยะล่วงหน้าและปิดการกำจัดขยะชั่วคราว (`gc.collect()` และ `gc.disable()`) ก่อนเข้าสู่ Hot Loop เพื่อให้ Control Loop ทำงานได้เต็มประสิทธิภาพที่ 1,000Hz โดยปราศจากอาการสะดุด 100%
 
 ### Memory Optimization
 ใช้โครงสร้าง `__slots__` ในคลาส และใช้ `micropython.const()` ในการกำหนดตัวแปร เพื่อบีบอัดการใช้ RAM ให้เหลือเพียง ~200KB ซึ่งช่วยเพิ่มพื้นที่ว่างให้ระบบปฏิบัติการ (RTOS) ทำงานได้เสถียรที่สุด *(อ้างอิงโค้ด: [`main.py#L202`](./main.py#L202))*
