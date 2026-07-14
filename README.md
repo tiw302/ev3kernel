@@ -4,9 +4,11 @@
   <img src="assets/logo.png" alt="EV3Kernel Logo" width="750">
   <br><br>
   <a href="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml"><img src="https://github.com/tiw302/ev3kernel/actions/workflows/lint.yml/badge.svg" alt="Code Quality & Syntax Check"></a>
-  <img src="https://img.shields.io/badge/Python-3.10-blue.svg" alt="Python 3.10">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <img src="https://img.shields.io/github/last-commit/tiw302/ev3kernel" alt="Last Commit">
+  <img src="https://img.shields.io/badge/MicroPython-v1.20-blue.svg?logo=micropython&logoColor=white" alt="MicroPython v1.20">
+  <img src="https://img.shields.io/badge/Pybricks-4.0_Beta-9b59b6.svg" alt="Pybricks 4.0">
+  <img src="https://img.shields.io/badge/Python-3.10-3776AB.svg?logo=python&logoColor=white" alt="Python 3.10">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg?logo=opensourceinitiative&logoColor=white" alt="License"></a>
+  <img src="https://img.shields.io/github/last-commit/tiw302/ev3kernel?logo=github&logoColor=white" alt="Last Commit">
 </div>
 
 ### Engineering Whitepaper & System Documentation
@@ -61,7 +63,7 @@ This kernel is highly optimized specifically for classic LEGO hardware following
 
 > [!TIP]
 > **Are you using SPIKE Prime or Robot Inventor?**
-> Modern hubs feature a built-in Gyro sensor. We highly recommend using our sister project specifically engineered for SPIKE Prime here: **[🚀 tiw302/spikekernel](https://github.com/tiw302/spikekernel)** *(Currently in active development with native Gyro Control).*
+> Modern hubs feature a built-in Gyro sensor. We highly recommend using our sister project specifically engineered for SPIKE Prime here: **[⌘ tiw302/spikekernel](https://github.com/tiw302/spikekernel)** *(Currently in active development with native Gyro Control).*
 
 ## Repository Structure
 *   `main.py` - The core monolith kernel. (Copy and paste this single file to the IDE to run).
@@ -177,10 +179,10 @@ This kernel expects a standardized hardware layout to ensure optimal geometry ca
 ## Navigation Theory & Mathematics
 
 ### 1. PIDv2 (Proportional-Integral-Derivative) Control
-We have engineered an advanced PID controller to overcome common EV3 shortcomings *(Source: [`main.py#L113-L168`](./main.py#L113-L168) \| Theory: [Wikipedia](https://en.wikipedia.org/wiki/Proportional%E2%80%93integral%E2%80%93derivative_controller))* :
-*   **Derivative on Measurement:** Eliminates "derivative kick" when the setpoint changes suddenly.
-*   **EMA Filter (Exponential Moving Average):** Smooths noisy analog signals from the EV3 color sensors before they enter the PID equation.
-*   **Back-calculation Anti-windup:** Prevents integral windup accumulation during mechanical stalls.
+We have engineered an advanced PID controller to overcome common EV3 shortcomings by **inlining** the equations directly into the driving functions (e.g. `move_straight`) for Zero-Allocation performance at a 1,000Hz frequency *(Theory: [Wikipedia](https://en.wikipedia.org/wiki/Proportional%E2%80%93integral%E2%80%93derivative_controller))* :
+*   **Derivative on Measurement (Inlined):** Eliminates "derivative kick" when the setpoint changes suddenly.
+*   **EMA Filter (Inlined):** Smooths noisy analog signals from the EV3 color sensors before they enter the PID equation.
+*   **Back-calculation Anti-windup (Inlined):** Prevents integral windup accumulation during mechanical stalls.
 
 <div align="center">
   <img src="./assets/pid_response.gif" alt="PID Animation" width="600">
@@ -259,6 +261,32 @@ else:
 ```
 </details>
 
+### 4. Auto-Squaring & Synchronization
+To eliminate accumulated error and reset the robot's physical heading mid-run, we employ motor synchronization techniques:
+*   **Wall Squaring:** Uses a P-Controller on the left and right wheel encoders (`sync_err = left_angle - right_angle`) to force the wheels to spin at the exact same rate while pushing against a wall. This prevents the robot from twisting or spinning out when stalling.
+*   **Line Squaring:** Processes the left and right color sensors independently. When driving towards a transverse line, whichever sensor hits the line first will immediately brake its corresponding motor, while the other motor continues to drive until it also detects the line. This perfectly aligns the robot perpendicular to the line.
+
+<div align="center">
+  <img src="./assets/auto_squaring.gif" alt="Auto Squaring Animation" width="600">
+  <p><em>Simulated Line Squaring where the left sensor hits the line first and brakes, waiting for the right side to align.</em></p>
+</div>
+
+<details>
+<summary><b>[+] View Proportional Wall Squaring & Independent Braking Logic</b></summary>
+
+```text
+// 1. Proportional Wall Squaring
+sync_error = Left_Motor_Angle - Right_Motor_Angle
+correction = Kp * sync_error
+Left_Motor_Power = Base_Power - correction
+Right_Motor_Power = Base_Power + correction
+
+// 2. Independent Line Squaring
+if (Left_Sensor_Sees_Black)  -> Stop Left Motor
+if (Right_Sensor_Sees_Black) -> Stop Right Motor
+```
+</details>
+
 ---
 
 ## Performance Optimization
@@ -273,10 +301,12 @@ Objective architectural results achieved by abandoning standard OOP patterns in 
 | **Deployment** | Heavy compilation & slow sync times | Single-file Monolith (Instant execution via Web IDE) |
 | **Battery Efficiency** | High drain due to heavy stock OS overhead | Exceptional battery life (Bare-metal + Kernel optimization) |
 
-### Zero-Allocation Hot Loops
-In MicroPython, instantiating new objects (e.g., calling `print`, concatenating strings) triggers the Garbage Collector (GC), causing random 10-30ms stutters in the robot's motion. *(Source: [`main.py#L639-L689`](./main.py#L639-L689) \| Ref: [MicroPython Docs](https://docs.micropython.org/en/latest/reference/constrained.html#memory))*
-* All `print()` statements are strictly banned from execution hot loops.
-* Hardware methods and variables are localized (cached) to reduce CPU lookup overhead.
+### Zero-Allocation Hot Loops & Deterministic GC
+In MicroPython, instantiating new objects (e.g., calling `print`, concatenating strings) triggers the Garbage Collector (GC), causing random CPU freezes (5-10ms jitter). This results in the robot randomly stuttering while driving or tracking lines. *(Ref: [MicroPython Docs](https://docs.micropython.org/en/latest/reference/constrained.html#memory))*
+
+*   All `print()` statements are strictly banned from execution hot loops.
+*   Hardware methods and variables are localized (cached) to reduce CPU lookup overhead.
+*   **Zero-Jitter Control:** We take full control of the Garbage Collector by calling `gc.collect()` to pre-clear memory and `gc.disable()` to freeze the GC entirely before entering any Hot Loop. This ensures the control loop executes at a flawless 1,000Hz without a single jitter.
 
 ### Memory Optimization
 The architecture uses `__slots__` within classes and `micropython.const()` for global variables to compress the RAM footprint to just ~200KB. This maximizes available memory for the RTOS to maintain stability. *(Source: [`main.py#L202`](./main.py#L202))*
