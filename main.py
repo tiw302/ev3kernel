@@ -68,6 +68,7 @@
 """
 
 import math
+import gc
 from pybricks.hubs import EV3Brick
 from pybricks.ev3devices import Motor, ColorSensor
 from pybricks.parameters import Port, Stop, Button
@@ -109,93 +110,6 @@ def apply_deadband(speed, deadband=DEADBAND_SPEED):
     if speed > 1: return speed + deadband
     if speed < -1: return speed - deadband
     return 0
-
-class PIDv2:
-    # __slots__ eliminates per-instance __dict__ — saves ~50 bytes of RAM per object
-    __slots__ = ('kp', 'ki', 'kd', 'integral', 'prev_measurement', 'd_filtered',
-                 'integral_limit', 'd_alpha', 'max_out')
-
-    def __init__(self, kp, ki, kd, integral_limit=150, d_alpha=0.25, max_out=None):
-        self.kp = kp
-        self.ki = ki
-        self.kd = kd
-        self.integral = 0.0
-        self.prev_measurement = None
-        self.d_filtered = 0.0
-        self.integral_limit = integral_limit
-        self.d_alpha = d_alpha
-        self.max_out = max_out
-        
-    def reset(self):
-        self.integral = 0.0
-        self.prev_measurement = None
-        self.d_filtered = 0.0
-        
-    def compute(self, error, measurement, dt):
-        """
-        computes the pid output using derivative on measurement to prevent reference kick.
-        formula: output = (kp * error) + (ki * integral) - (kd * (d_measurement / dt))
-        includes integral anti-windup to prevent runaway errors during stalls.
-        available for use in user mission scripts (e.g. line following).
-        """
-        if dt <= 0: return 0.0
-        p = self.kp * error
-        
-        integ = self.integral + error * dt
-        lim = self.integral_limit
-        if integ > lim: self.integral = lim
-        elif integ < -lim: self.integral = -lim
-        else: self.integral = integ
-        
-        i = self.ki * self.integral
-        
-        if self.prev_measurement is None:
-            self.prev_measurement = measurement
-        d_raw = -(measurement - self.prev_measurement) * (1.0 / dt)
-        self.d_filtered = self.d_alpha * d_raw + (1.0 - self.d_alpha) * self.d_filtered
-        self.prev_measurement = measurement
-        d = self.kd * self.d_filtered
-        
-        output = p + i + d
-        
-        if self.max_out is not None and self.ki > 0:
-            mo = self.max_out
-            if output > mo: clamped = mo
-            elif output < -mo: clamped = -mo
-            else: clamped = output
-            if output != clamped:
-                self.integral = (clamped - p - d) / self.ki
-                
-        return output
-
-class TrapProfile:
-    # __slots__ for RAM savings
-    __slots__ = ('total', 'min_speed', 'max_speed', 'accel_end', 'decel_start')
-
-    def __init__(self, total_deg, min_speed, max_speed, accel_frac=0.25, decel_frac=0.30):
-        self.total = total_deg
-        self.min_speed = min_speed
-        self.max_speed = max_speed
-        self.accel_end = total_deg * accel_frac
-        self.decel_start = total_deg * (1.0 - decel_frac)
-        
-    def speed_at(self, progress):
-        """
-        generates a trapezoidal velocity profile based on current distance progress.
-        phase 1: linearly accelerates from min_speed to max_speed.
-        phase 2: cruises at max_speed.
-        phase 3: linearly decelerates from max_speed back to min_speed.
-        available for use in user mission scripts (e.g. line following with speed control).
-        """
-        if self.total <= 0: return self.min_speed
-        if progress <= self.accel_end:
-            t = progress / self.accel_end if self.accel_end > 0 else 1.0
-            return self.min_speed + (self.max_speed - self.min_speed) * t
-        if progress >= self.decel_start:
-            decel_dist = self.total - self.decel_start
-            t = (self.total - progress) / decel_dist if decel_dist > 0 else 0.0
-            return self.min_speed + (self.max_speed - self.min_speed) * t
-        return self.max_speed
 
 class Robot:
     # __slots__: eliminates __dict__ on robot instance — largest single RAM saving
@@ -309,6 +223,9 @@ class Robot:
         pid_prev     = None
         pid_d_filt   = 0.0
         
+        gc.collect()
+        gc.disable()
+        
         while True:
             la       = -la_func()
             ra       = ra_func()
@@ -379,6 +296,7 @@ class Robot:
             r_run(r)
             wait(10)
             
+        gc.enable()
         self.stop_drive()
         self.log("Done: str")
 
@@ -424,6 +342,9 @@ class Robot:
         pid_integral = 0.0
         pid_prev     = None
         pid_d_filt   = 0.0
+        
+        gc.collect()
+        gc.disable()
         
         while True:
             la       = -la_func()
@@ -473,6 +394,7 @@ class Robot:
             r_run(-dirn * r)
             wait(10)
 
+        gc.enable()
         self.stop_drive()
         self.log("Done: turn")
 
@@ -510,6 +432,9 @@ class Robot:
             self.left_motor.hold()
             run_sign = -dirn
 
+        gc.collect()
+        gc.disable()
+
         while True:
             progress = abs(active_ang())
             
@@ -528,6 +453,7 @@ class Robot:
             active_run(run_sign * base)
             wait(10)
 
+        gc.enable()
         self.stop_drive()
         self.log("Done: pivot turn")
 
@@ -554,6 +480,9 @@ class Robot:
         ra_func = self.right_motor.angle
         max_pwr = abs(power)
         
+        gc.collect()
+        gc.disable()
+        
         watch = StopWatch()
         while watch.time() < time_ms:
             la = -la_func()
@@ -577,6 +506,7 @@ class Robot:
             
             wait(10)
             
+        gc.enable()
         self.stop_drive(hold)
         self.log("Done: align wall")
 
@@ -610,6 +540,9 @@ class Robot:
         l_found = False
         r_found = False
         
+        gc.collect()
+        gc.disable()
+        
         # wait until both sensors detect the line
         while not (l_found and r_found):
             
@@ -625,6 +558,7 @@ class Robot:
                 
             wait(10)
             
+        gc.enable()
         self.stop_drive(hold=True)
         
         if align:
@@ -658,6 +592,9 @@ class Robot:
         base_spd = speed * 10
         last_error = 0
         
+        gc.collect()
+        gc.disable()
+        
         while True:
             
             l_val = ls_ref()
@@ -681,6 +618,7 @@ class Robot:
             last_error = error
             wait(10)
             
+        gc.enable()
         self.stop_drive(hold=True)
         self.log("Done: track line (intersection detected)")
 
@@ -707,6 +645,9 @@ class Robot:
         base_spd = speed * 10
         last_error = 0
         
+        gc.collect()
+        gc.disable()
+        
         while avg_ang() < target:
             l_val = ls_ref()
             r_val = rs_ref()
@@ -725,6 +666,7 @@ class Robot:
             last_error = error
             wait(10)
             
+        gc.enable()
         self.stop_drive(hold=True)
         self.log(f"Done: track line dist {distance_cm}cm")
 
@@ -748,6 +690,9 @@ class Robot:
         base_spd = speed * 10
         last_error = 0
         
+        gc.collect()
+        gc.disable()
+        
         while sw_time() < time_ms:
             l_val = ls_ref()
             r_val = rs_ref()
@@ -766,6 +711,7 @@ class Robot:
             last_error = error
             wait(10)
             
+        gc.enable()
         self.stop_drive(hold=True)
         self.log(f"Done: track line timer {time_ms}ms")
 
@@ -795,6 +741,9 @@ class Robot:
         l_run = self.left_motor.run
         r_run = self.right_motor.run
         
+        gc.collect()
+        gc.disable()
+        
         watch = StopWatch()
         while watch.time() < time_ms:
             
@@ -822,6 +771,7 @@ class Robot:
             
             wait(10)
             
+        gc.enable()
         self.stop_drive(hold)
         self.log("Done: align line")
         
@@ -897,17 +847,6 @@ class Robot:
 
     def check_intersection(self, threshold=15):
         return self.sensor_3.reflection() < threshold and self.sensor_4.reflection() < threshold
-
-    def dist_stop(self, target_cm):
-        """
-        creates a lambda condition that returns true when the target distance is reached.
-        formula: target_deg = (target_mm / wheel_circumference) * 360
-        useful for stopping loops dynamically when driving a specific distance.
-        """
-        target_mm  = target_cm * 10
-        self.reset_encoders()
-        target_deg = (target_mm / WHEEL_CIRC) * 360 * DISTANCE_CORRECTION
-        return lambda: self.avg_angle() >= target_deg
 
 # ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████ 
 # ██    ██    ██    ██ ██      ██    ██    ██      ██      
