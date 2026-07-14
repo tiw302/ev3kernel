@@ -98,13 +98,24 @@ if __name__ == "__main__":
                 wait(10)
             
             watch = StopWatch()
+            
+            # cache method references to avoid dictionary lookups and list allocations in loop
+            s1_ref = robot.sensor_1.reflection
+            s2_ref = robot.sensor_2.reflection
+            s3_ref = robot.sensor_3.reflection
+            s4_ref = robot.sensor_4.reflection
+            
             while watch.time() < 600 * 1000:
-                # >> check exit button FIRST before any wait
+                # check exit button FIRST before any wait
                 if Button.UP in robot.hub.buttons.pressed():
                     print("[ROBOT] exiting debug mode.")
                     break
                 
-                s1, s2, s3, s4 = [s.reflection() for s in (robot.sensor_1, robot.sensor_2, robot.sensor_3, robot.sensor_4)]
+                # zero-allocation sensor reading
+                s1 = s1_ref()
+                s2 = s2_ref()
+                s3 = s3_ref()
+                s4 = s4_ref()
                 
                 print(f"[ROBOT] S1:{s1:3} | S2:{s2:3} | S3:{s3:3} | S4:{s4:3}")
                 
@@ -144,11 +155,18 @@ if __name__ == "__main__":
             robot.hub.speaker.beep(500, 200)
             watch = StopWatch()
             mn, mx = 100, 0
-            sensors = [robot.sensor_1, robot.sensor_2, robot.sensor_3, robot.sensor_4]
+            
+            # cache method references to avoid allocations in loop
+            sensor_refs = (
+                robot.sensor_1.reflection,
+                robot.sensor_2.reflection,
+                robot.sensor_3.reflection,
+                robot.sensor_4.reflection
+            )
             
             while watch.time() < 4 * 1000:
-                for s in sensors:
-                    v = s.reflection()
+                for get_ref in sensor_refs:
+                    v = get_ref()
                     if v < mn: mn = v
                     if v > mx: mx = v
                 wait(20)
