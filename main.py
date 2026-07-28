@@ -94,10 +94,10 @@ WHEEL_CIRC        = math.pi * WHEEL_DIAMETER_MM  # pi * d
 #
 # >> tuning parameters
 DISTANCE_CORRECTION = 0.9   # fix slip on straight (1.05 if it drives short)
-TURN_CORRECTION     = 1.42  # fix slip on turns   (0.95 if it overturns)
+TURN_CORRECTION     = 1.47  # fix slip on turns   (0.95 if it overturns)
 DEADBAND_SPEED      = const(60)    # min power to overcome motor stiction at low speed
-WHITE_LIGHT         = const(34)    # average reflection on white surface (calibrate this before match)
-BLACK_LIGHT         = const(4)     # average reflection on black line (calibrate this before match)
+WHITE_LIGHT         = const(32)    # average reflection on white surface (calibrate this before match)
+BLACK_LIGHT         = const(17)     # average reflection on black line (calibrate this before match)
 LINE_EDGE           = (WHITE_LIGHT + BLACK_LIGHT) / 2  # automatic midpoint threshold
 
 def clamp(v, lo, hi):
@@ -187,8 +187,8 @@ class Robot:
 # |  \/  |/ _ \| \ / / __| / __|_   _| _ \  /_\ |_ _/ __| || |_   _|
 # | |\/| | (_) |\ V /| _|  \__ \ | | |   / / _ \ | | (_ | __ | | |
 # |_|  |_|\___/  \_/ |___| |___/ |_| |_|_\/_/ \_\___\___|_||_| |_|
-    def move_straight(self, distance_cm, max_speed=40, min_speed=8,
-                    kp=0.45, ki=0.8, kd=0.25, accel_frac=0.25, decel_frac=0.30):
+    def move_straight(self, distance_cm, max_speed=40, min_speed=20,
+                    kp=15, ki=0.8, kd=0.25, accel_frac=0.25, decel_frac=0.30):
         """
         drives straight by synchronizing left and right wheels using a pid controller.
         formula: motor_degrees = (distance_mm / wheel_circumference) * 360 * correction
@@ -310,7 +310,7 @@ class Robot:
 #   | | | |_| |   / .` |
 #   |_|  \___/|_|_\_|\_|
     def turn(self, angle_deg, max_speed=20, min_speed=6,
-            kp=1.2, ki=0.01, kd=0.3, accel_frac=0.30, decel_frac=0.35):
+            kp=2, ki=0.01, kd=0.3, accel_frac=0.30, decel_frac=0.35):
         """
         performs a precise point-turn by spinning wheels in opposite directions.
         formula: arc_length = (turn_angle / 360) * (pi * axle_track_mm)
@@ -470,7 +470,7 @@ class Robot:
 #   /_\ | |  |_ _/ __| \| |  \ \    / //_\ | |  | |
 #  / _ \| |__ | | (_ | .` |   \ \/\/ // _ \| |__| |__
 # /_/ \_\____|___\___|_|\_|    \_/\_//_/ \_\____|____|
-    def align_wall(self, power, time_ms, hold=True, kp=0.5):
+    def align_wall(self, power, time_ms, hold=True, kp=5):
         """
         runs the robot into a wall using PID sync to stay straight,
         but limits raw power to prevent violent stalling.
@@ -575,7 +575,7 @@ class Robot:
 # |_   _| _ \  /_\ / __| |/ / | |  |_ _| \| | __|
 #   | | |   / / _ \ (__| ' <  | |__ | || .` | _|
 #   |_| |_|_\/_/ \_\___|_|\_\ |____|___|_|\_|___|
-    def track_line(self, speed=40, kp=1.5, kd=0.5, threshold=LINE_EDGE, left_sensor='2', right_sensor='3'):
+    def track_line(self, speed=40, kp=1, kd=0.05, threshold=LINE_EDGE, left_sensor='2', right_sensor='3'):
         """
         follows a line by keeping it between two sensors (straddling).
         stops when BOTH sensors detect black (intersection).
@@ -627,7 +627,7 @@ class Robot:
         self.stop_drive(hold=True)
         self.log("Done: track line (intersection detected)")
 
-    def track_line_distance(self, distance_cm, speed=40, kp=1.5, kd=0.5, left_sensor='2', right_sensor='3'):
+    def track_line_distance(self, distance_cm, speed=40, kp=2, kd=15, left_sensor='2', right_sensor='3'):
         """
         follows a line for a specific distance (in cm).
         distance_cm: distance to travel (cm).
@@ -913,7 +913,7 @@ if __name__ == "__main__":
     #   * ===============================================
     #   *  CHEAT SHEET: ตัวอย่างการเรียกใช้ทุกฟังก์ชัน
     #   * ===============================================
-        # 1. การเคลื่อนที่พื้นฐาน (basic movements)
+        # 1. การเคลื่อนที่พื้นฐาน (basi0c movements)
         # robot.move_straight(50, max_speed=50)         # วิ่งตรง 50 ซม. ความเร็ว 50 (move straight 50 cm at speed 50)
         # robot.move_straight(-20, max_speed=40)        # ถอยหลัง 20 ซม. (move backward 20 cm)
         # robot.turn(90, max_speed=40)                  # เลี้ยวขวา 90 องศา (point turn right 90 degrees)
@@ -960,3 +960,8 @@ if __name__ == "__main__":
     #   * ===============================================
     robot.check_battery()
     wait(500)
+    robot.align_wall(power=-60, time_ms=6000)
+    robot.move_straight(18, max_speed=50)
+    robot.turn(90, max_speed=60)
+    robot.track_line_distance(75, speed=40)
+    

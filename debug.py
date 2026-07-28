@@ -252,7 +252,7 @@ if __name__ == "__main__":
         # ██       ██ ██  ██    ██    
         # █████     ███   ██    ██    
         # ██       ██ ██  ██    ██    
-        # ███████ ██   ██ ██    ██    
+        # ███████ ██   ██ ██    ██     
         
         # >> mode 4: exit (up button in main menu)
         elif Button.UP in pressed:
