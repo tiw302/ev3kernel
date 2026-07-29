@@ -375,7 +375,7 @@ if (Right_Sensor_Sees_Black) -> Stop Right Motor
 | Profile | Name / GitHub | Role & Contributions |
 | :---: | :--- | :--- |
 | <img src="https://avatars.githubusercontent.com/u/140261965?v=4" width="50" style="border-radius: 50%;"> | **[@tiw302](https://github.com/tiw302)** | **Lead Developer & Architect** <br> ออกแบบสถาปัตยกรรม Kernel, เขียนสมการคณิตศาสตร์ และรีดประสิทธิภาพ (Optimization) |
-| ⏳ *(รอสมัคร GitHub)* | **[รอเพื่อนสมัคร GitHub]** | **Lead Tester & Field Engineer** <br> นำรหัสไปทดสอบบนสนามจริง, ปรับจูนค่า PID และช่วยเช็คบั๊กของฮาร์ดแวร์ |
+| <img src="https://avatars.githubusercontent.com/u/171816935?v=4" width="50" style="border-radius: 50%;"> | **[@bosskub56](https://github.com/bosskub56)** | **Lead Tester & Field Engineer** <br> นำรหัสไปทดสอบบนสนามจริง, ปรับจูนค่า PID และช่วยเช็คบั๊กของฮาร์ดแวร์ |
 
 ---
 
