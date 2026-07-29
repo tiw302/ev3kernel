@@ -82,9 +82,9 @@ from micropython import const
 # |_| |_/_/   \_\_| \_\____/  \_/\_/_/   \_\_| \_\_____|
 #
 # >> robot hardware configuration
-WHEEL_DIAMETER_MM = 56.0       # diameter of the wheels in mm. used for travel distance.
-AXLE_TRACK_MM     = 120.0      # distance between wheels in mm. used for turn arc.
-WHEEL_CIRC        = math.pi * WHEEL_DIAMETER_MM  # pi * d
+WHEEL_DIAMETER_MM = 56.0  # diameter of the wheels in mm. used for travel distance.
+AXLE_TRACK_MM = 120.0  # distance between wheels in mm. used for turn arc.
+WHEEL_CIRC = math.pi * WHEEL_DIAMETER_MM  # pi * d
 
 #  _____ _   _ _   _ ___ _   _  ____
 # |_   _| | | | \ | |_ _| \ | |/ ___|
@@ -93,46 +93,67 @@ WHEEL_CIRC        = math.pi * WHEEL_DIAMETER_MM  # pi * d
 #   |_|  \___/|_| \_|___|_| \_|\____|
 #
 # >> tuning parameters
-DISTANCE_CORRECTION = 0.9   # fix slip on straight (1.05 if it drives short)
-TURN_CORRECTION     = 1.47  # fix slip on turns   (0.95 if it overturns)
-DEADBAND_SPEED      = const(60)    # min power to overcome motor stiction at low speed
-WHITE_LIGHT         = const(32)    # average reflection on white surface (calibrate this before match)
-BLACK_LIGHT         = const(17)     # average reflection on black line (calibrate this before match)
-LINE_EDGE           = (WHITE_LIGHT + BLACK_LIGHT) / 2  # automatic midpoint threshold
+DISTANCE_CORRECTION = 0.9  # fix slip on straight (1.05 if it drives short)
+TURN_CORRECTION = 1.42  # fix slip on turns   (0.95 if it overturns)
+DEADBAND_SPEED = const(60)  # min power to overcome motor stiction at low speed
+WHITE_LIGHT = const(
+    34
+)  # average reflection on white surface (calibrate this before match)
+BLACK_LIGHT = const(4)  # average reflection on black line (calibrate this before match)
+LINE_EDGE = (WHITE_LIGHT + BLACK_LIGHT) / 2  # automatic midpoint threshold
+
 
 def clamp(v, lo, hi):
-    if v < lo: return lo
-    if v > hi: return hi
+    if v < lo:
+        return lo
+    if v > hi:
+        return hi
     return v
+
 
 def apply_deadband(speed, deadband=DEADBAND_SPEED):
     """helper: inject deadband power to overcome stiction. for use in mission scripts."""
-    if speed > 1: return speed + deadband
-    if speed < -1: return speed - deadband
+    if speed > 1:
+        return speed + deadband
+    if speed < -1:
+        return speed - deadband
     return 0
+
 
 class Robot:
     # __slots__: eliminates __dict__ on robot instance — largest single RAM saving
-    __slots__ = ('hub', 'left_motor', 'right_motor', 'lift_motor_a', 'lift_motor_d',
-                 'sensor_1', 'sensor_2', 'sensor_3', 'sensor_4', 'black_raw', 'white_raw',
-                 'sensor_map')
-#  ██████  ███████ ████████ ██    ██ ██████
-# ██       ██         ██    ██    ██ ██   ██
-#  █████   █████      ██    ██    ██ ██████
-#      ██  ██         ██    ██    ██ ██
-# ██████   ███████    ██     ██████  ██
-#
-# >> setup core (initialization, port and sensor checking)
-# >> setup core (ระบบตั้งค่าเริ่มต้น เช็คพอร์ตและเซ็นเซอร์)
+    __slots__ = (
+        "hub",
+        "left_motor",
+        "right_motor",
+        "lift_motor_a",
+        "lift_motor_d",
+        "sensor_1",
+        "sensor_2",
+        "sensor_3",
+        "sensor_4",
+        "black_raw",
+        "white_raw",
+        "sensor_map",
+    )
+
+    #  ██████  ███████ ████████ ██    ██ ██████
+    # ██       ██         ██    ██    ██ ██   ██
+    #  █████   █████      ██    ██    ██ ██████
+    #      ██  ██         ██    ██    ██ ██
+    # ██████   ███████    ██     ██████  ██
+    #
+    # >> setup core (initialization, port and sensor checking)
+    # >> setup core (ระบบตั้งค่าเริ่มต้น เช็คพอร์ตและเซ็นเซอร์)
     def __init__(self):
         self.hub = EV3Brick()
         # disable default center-button kill so estop routes through stop_drive()
         self.hub.system.set_stop_button(None)
-        print("[ROBOT] ------------------------------")
+        print("[ROBOT] --------------------------------------")
         print("[ROBOT] Initializing Ports...")
 
-        self.left_motor   = self._init_motor(Port.B, "Left Motor")
-        self.right_motor  = self._init_motor(Port.C, "Right Motor")
+        self.left_motor = self._init_motor(Port.B, "Left Motor")
+        self.right_motor = self._init_motor(Port.C, "Right Motor")
         self.lift_motor_a = self._init_motor(Port.A, "Lift A", required=False)
         self.lift_motor_d = self._init_motor(Port.D, "Lift D", required=False)
 
@@ -142,12 +163,16 @@ class Robot:
         self.sensor_4 = self._init_sensor(Port.S4, "S4")
 
         # dict lookup แทน getattr(self, f"sensor_{n}") — เร็วกว่าและไม่สร้าง string object ทุกครั้งที่เรียก
-        self.sensor_map = {'1': self.sensor_1, '2': self.sensor_2,
-                            '3': self.sensor_3, '4': self.sensor_4}
+        self.sensor_map = {
+            "1": self.sensor_1,
+            "2": self.sensor_2,
+            "3": self.sensor_3,
+            "4": self.sensor_4,
+        }
 
         print("[ROBOT] All required ports connected!")
         self.check_battery()
-        print("[ROBOT] ------------------------------")
+        print("[ROBOT] --------------------------------------")
 
         self.black_raw = BLACK_LIGHT
         self.white_raw = WHITE_LIGHT
@@ -174,21 +199,30 @@ class Robot:
             self.hub.speaker.beep(200, 500)
             raise
 
-# ███    ███  ██████  ██    ██ ███████ ███    ███ ███████ ███    ██ ████████
-# ████  ████ ██    ██ ██    ██ ██      ████  ████ ██      ████   ██    ██
-# ██ ████ ██ ██    ██ ██    ██ █████   ██ ████ ██ █████   ██ ██  ██    ██
-# ██  ██  ██ ██    ██  ██  ██  ██      ██  ██  ██ ██      ██  ██ ██    ██
-# ██      ██  ██████    ████   ███████ ██      ██ ███████ ██   ████    ██
-#
-# >> movement core (drive mechanics, straight motion and turning)
-# >> movement core (ระบบขับเคลื่อนล้อซ้ายขวา วิ่งตรง และเลี้ยว)
+    # ███    ███  ██████  ██    ██ ███████ ███    ███ ███████ ███    ██ ████████
+    # ████  ████ ██    ██ ██    ██ ██      ████  ████ ██      ████   ██    ██
+    # ██ ████ ██ ██    ██ ██    ██ █████   ██ ████ ██ █████   ██ ██  ██    ██
+    # ██  ██  ██ ██    ██  ██  ██  ██      ██  ██  ██ ██      ██  ██ ██    ██
+    # ██      ██  ██████    ████   ███████ ██      ██ ███████ ██   ████    ██
+    #
+    # >> movement core (drive mechanics, straight motion and turning)
+    # >> movement core (ระบบขับเคลื่อนล้อซ้ายขวา วิ่งตรง และเลี้ยว)
 
-#  __  __  ___  _   _ ___   ___ _____ ___    _   ___ ___ _  _ _____
-# |  \/  |/ _ \| \ / / __| / __|_   _| _ \  /_\ |_ _/ __| || |_   _|
-# | |\/| | (_) |\ V /| _|  \__ \ | | |   / / _ \ | | (_ | __ | | |
-# |_|  |_|\___/  \_/ |___| |___/ |_| |_|_\/_/ \_\___\___|_||_| |_|
-    def move_straight(self, distance_cm, max_speed=40, min_speed=20,
-                    kp=15, ki=0.8, kd=0.25, accel_frac=0.25, decel_frac=0.30):
+    #  __  __  ___  _   _ ___   ___ _____ ___    _   ___ ___ _  _ _____
+    # |  \/  |/ _ \| \ / / __| / __|_   _| _ \  /_\ |_ _/ __| || |_   _|
+    # | |\/| | (_) |\ V /| _|  \__ \ | | |   / / _ \ | | (_ | __ | | |
+    # |_|  |_|\___/  \_/ |___| |___/ |_| |_|_\/_/ \_\___\___|_||_| |_|
+    def move_straight(
+        self,
+        distance_cm,
+        max_speed=40,
+        min_speed=20,
+        kp=15,
+        ki=0.8,
+        kd=0.25,
+        accel_frac=0.25,
+        decel_frac=0.30,
+    ):
         """
         drives straight by synchronizing left and right wheels using a pid controller.
         formula: motor_degrees = (distance_mm / wheel_circumference) * 360 * correction
@@ -199,56 +233,58 @@ class Robot:
         self.reset_encoders()
 
         # pre-compute all loop-invariant values outside the hot loop (zero runtime alloc)
-        max_spd    = max_speed * 10
-        min_spd    = min_speed * 10
-        spd_range  = max_spd - min_spd
-        target     = abs(distance_mm) / WHEEL_CIRC * 360.0 * DISTANCE_CORRECTION
-        dirn       = 1 if distance_mm >= 0 else -1
-        accel_end  = target * accel_frac
-        decel_st   = target * (1.0 - decel_frac)
+        max_spd = max_speed * 10
+        min_spd = min_speed * 10
+        spd_range = max_spd - min_spd
+        target = abs(distance_mm) / WHEEL_CIRC * 360.0 * DISTANCE_CORRECTION
+        dirn = 1 if distance_mm >= 0 else -1
+        accel_end = target * accel_frac
+        decel_st = target * (1.0 - decel_frac)
         decel_dist = target - decel_st
-        pid_ilim   = 100.0
+        pid_ilim = 100.0
         pid_maxout = max_spd * 0.4
-        db         = DEADBAND_SPEED
-        db_thresh  = min_spd * 1.5
-        d_alpha    = 0.2
-        d_alpha_i  = 0.8  # 1.0 - d_alpha (pre-computed)
+        db = DEADBAND_SPEED
+        db_thresh = min_spd * 1.5
+        d_alpha = 0.2
+        d_alpha_i = 0.8  # 1.0 - d_alpha (pre-computed)
 
         # cache bound method refs — eliminates attribute lookup on every iteration
-        la_func      = self.left_motor.angle
-        ra_func      = self.right_motor.angle
-        l_run        = self.left_motor.run
-        r_run        = self.right_motor.run
-        lw           = StopWatch()
-        lw_time      = lw.time    # cache StopWatch methods too
-        lw_reset     = lw.reset
+        la_func = self.left_motor.angle
+        ra_func = self.right_motor.angle
+        l_run = self.left_motor.run
+        r_run = self.right_motor.run
+        lw = StopWatch()
+        lw_time = lw.time  # cache StopWatch methods too
+        lw_reset = lw.reset
 
         # pid state as plain locals — local var access is fastest in micropython
         pid_integral = 0.0
-        pid_prev     = None
-        pid_d_filt   = 0.0
+        pid_prev = None
+        pid_d_filt = 0.0
 
         gc.collect()
         gc.disable()
 
         while True:
-            la       = -la_func()
-            ra       = ra_func()
+            la = -la_func()
+            ra = ra_func()
             progress = (abs(la) + abs(ra)) * 0.5
 
-            if progress >= target: break
+            if progress >= target:
+                break
 
             # real dt via multiply (faster than divide by 1000)
             dt = lw_time() * 0.001
             lw_reset()
-            if dt <= 0.0: dt = 0.01
+            if dt <= 0.0:
+                dt = 0.01
 
             # inline trapezoid profile — no function call overhead
             if progress <= accel_end:
-                t    = progress / accel_end if accel_end > 0.0 else 1.0
+                t = progress / accel_end if accel_end > 0.0 else 1.0
                 base = (min_spd + spd_range * t) * dirn
             elif progress >= decel_st:
-                t    = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
+                t = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
                 base = (min_spd + spd_range * t) * dirn
             else:
                 base = max_spd * dirn
@@ -257,45 +293,62 @@ class Robot:
             enc_diff = la - ra
 
             integ = pid_integral + enc_diff * dt
-            if integ > pid_ilim: pid_integral = pid_ilim
-            elif integ < -pid_ilim: pid_integral = -pid_ilim
-            else: pid_integral = integ
+            if integ > pid_ilim:
+                pid_integral = pid_ilim
+            elif integ < -pid_ilim:
+                pid_integral = -pid_ilim
+            else:
+                pid_integral = integ
 
-            if pid_prev is None: pid_prev = enc_diff
-            d_raw      = -(enc_diff - pid_prev) * (1.0 / dt)
+            if pid_prev is None:
+                pid_prev = enc_diff
+            d_raw = -(enc_diff - pid_prev) * (1.0 / dt)
             pid_d_filt = d_alpha * d_raw + d_alpha_i * pid_d_filt
-            pid_prev   = enc_diff
+            pid_prev = enc_diff
 
-            p_out      = kp * enc_diff
-            i_out      = ki * pid_integral
-            d_out      = kd * pid_d_filt
+            p_out = kp * enc_diff
+            i_out = ki * pid_integral
+            d_out = kd * pid_d_filt
             correction = p_out + i_out + d_out
 
             # back-calc anti-windup — inline, no function call
             if ki > 0.0:
-                if correction > pid_maxout: clamped = pid_maxout
-                elif correction < -pid_maxout: clamped = -pid_maxout
-                else: clamped = correction
+                if correction > pid_maxout:
+                    clamped = pid_maxout
+                elif correction < -pid_maxout:
+                    clamped = -pid_maxout
+                else:
+                    clamped = correction
                 if correction != clamped:
                     pid_integral = (clamped - p_out - d_out) / ki
 
             # inline speed clamp
             l = base - correction
-            if l > max_spd: l = max_spd
-            elif l < -max_spd: l = -max_spd
+            if l > max_spd:
+                l = max_spd
+            elif l < -max_spd:
+                l = -max_spd
             r = base + correction
-            if r > max_spd: r = max_spd
-            elif r < -max_spd: r = -max_spd
+            if r > max_spd:
+                r = max_spd
+            elif r < -max_spd:
+                r = -max_spd
 
             # inline deadband compensation — avoids function call overhead
             if abs(l) < db_thresh:
-                if l > 1: l += db
-                elif l < -1: l -= db
-                else: l = 0
+                if l > 1:
+                    l += db
+                elif l < -1:
+                    l -= db
+                else:
+                    l = 0
             if abs(r) < db_thresh:
-                if r > 1: r += db
-                elif r < -1: r -= db
-                else: r = 0
+                if r > 1:
+                    r += db
+                elif r < -1:
+                    r -= db
+                else:
+                    r = 0
 
             l_run(-l)
             r_run(r)
@@ -305,12 +358,21 @@ class Robot:
         self.stop_drive()
         self.log("Done: str")
 
-#  _____ _   _ ___ _  _
-# |_   _| | | | _ \ \| |
-#   | | | |_| |   / .` |
-#   |_|  \___/|_|_\_|\_|
-    def turn(self, angle_deg, max_speed=20, min_speed=6,
-            kp=2, ki=0.01, kd=0.3, accel_frac=0.30, decel_frac=0.35):
+    #  _____ _   _ ___ _  _
+    # |_   _| | | | _ \ \| |
+    #   | | | |_| |   / .` |
+    #   |_|  \___/|_|_\_|\_|
+    def turn(
+        self,
+        angle_deg,
+        max_speed=20,
+        min_speed=6,
+        kp=2,
+        ki=0.01,
+        kd=0.3,
+        accel_frac=0.30,
+        decel_frac=0.35,
+    ):
         """
         performs a precise point-turn by spinning wheels in opposite directions.
         formula: arc_length = (turn_angle / 360) * (pi * axle_track_mm)
@@ -321,53 +383,55 @@ class Robot:
         self.reset_encoders()
 
         # pre-compute all loop-invariant values
-        max_spd    = max_speed * 10
-        min_spd    = min_speed * 10
-        spd_range  = max_spd - min_spd
-        arc_mm     = abs(angle_deg) / 360.0 * (math.pi * AXLE_TRACK_MM)
-        target     = arc_mm / WHEEL_CIRC * 360.0 * TURN_CORRECTION
-        dirn       = 1 if angle_deg >= 0 else -1
-        accel_end  = target * accel_frac
-        decel_st   = target * (1.0 - decel_frac)
+        max_spd = max_speed * 10
+        min_spd = min_speed * 10
+        spd_range = max_spd - min_spd
+        arc_mm = abs(angle_deg) / 360.0 * (math.pi * AXLE_TRACK_MM)
+        target = arc_mm / WHEEL_CIRC * 360.0 * TURN_CORRECTION
+        dirn = 1 if angle_deg >= 0 else -1
+        accel_end = target * accel_frac
+        decel_st = target * (1.0 - decel_frac)
         decel_dist = target - decel_st
-        pid_ilim   = 80.0
-        d_alpha    = 0.2
-        d_alpha_i  = 0.8
+        pid_ilim = 80.0
+        d_alpha = 0.2
+        d_alpha_i = 0.8
 
         # cache bound method refs
-        la_func     = self.left_motor.angle
-        ra_func     = self.right_motor.angle
-        l_run       = self.left_motor.run
-        r_run       = self.right_motor.run
-        lw          = StopWatch()
-        lw_time     = lw.time
-        lw_reset    = lw.reset
+        la_func = self.left_motor.angle
+        ra_func = self.right_motor.angle
+        l_run = self.left_motor.run
+        r_run = self.right_motor.run
+        lw = StopWatch()
+        lw_time = lw.time
+        lw_reset = lw.reset
 
         # pid state as locals
         pid_integral = 0.0
-        pid_prev     = None
-        pid_d_filt   = 0.0
+        pid_prev = None
+        pid_d_filt = 0.0
 
         gc.collect()
         gc.disable()
 
         while True:
-            la       = -la_func()
-            ra       = ra_func()
+            la = -la_func()
+            ra = ra_func()
             progress = (abs(la) + abs(ra)) * 0.5
 
-            if progress >= target: break
+            if progress >= target:
+                break
 
             dt = lw_time() * 0.001
             lw_reset()
-            if dt <= 0.0: dt = 0.01
+            if dt <= 0.0:
+                dt = 0.01
 
             # inline trapezoid profile
             if progress <= accel_end:
-                t    = progress / accel_end if accel_end > 0.0 else 1.0
+                t = progress / accel_end if accel_end > 0.0 else 1.0
                 base = min_spd + spd_range * t
             elif progress >= decel_st:
-                t    = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
+                t = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
                 base = min_spd + spd_range * t
             else:
                 base = max_spd
@@ -376,24 +440,32 @@ class Robot:
             sync_err = abs(la) - abs(ra)
 
             integ = pid_integral + sync_err * dt
-            if integ > pid_ilim: pid_integral = pid_ilim
-            elif integ < -pid_ilim: pid_integral = -pid_ilim
-            else: pid_integral = integ
+            if integ > pid_ilim:
+                pid_integral = pid_ilim
+            elif integ < -pid_ilim:
+                pid_integral = -pid_ilim
+            else:
+                pid_integral = integ
 
-            if pid_prev is None: pid_prev = sync_err
-            d_raw      = -(sync_err - pid_prev) * (1.0 / dt)
+            if pid_prev is None:
+                pid_prev = sync_err
+            d_raw = -(sync_err - pid_prev) * (1.0 / dt)
             pid_d_filt = d_alpha * d_raw + d_alpha_i * pid_d_filt
-            pid_prev   = sync_err
+            pid_prev = sync_err
 
             correction = kp * sync_err + ki * pid_integral + kd * pid_d_filt
 
             # clamp to [0, max]: prevents wheel reversing when correction is large
             l = base + correction
-            if l > max_spd: l = max_spd
-            elif l < 0: l = 0
+            if l > max_spd:
+                l = max_spd
+            elif l < 0:
+                l = 0
             r = base - correction
-            if r > max_spd: r = max_spd
-            elif r < 0: r = 0
+            if r > max_spd:
+                r = max_spd
+            elif r < 0:
+                r = 0
 
             l_run(-(dirn * l))
             r_run(-dirn * r)
@@ -403,7 +475,15 @@ class Robot:
         self.stop_drive()
         self.log("Done: turn")
 
-    def pivot_turn(self, angle_deg, pivot_side='right', max_speed=100, min_speed=10, accel_frac=0.2, decel_frac=0.2):
+    def pivot_turn(
+        self,
+        angle_deg,
+        pivot_side="right",
+        max_speed=100,
+        min_speed=10,
+        accel_frac=0.2,
+        decel_frac=0.2,
+    ):
         """
         turns the robot by moving only one wheel (pivot turn) with trapezoidal profile.
         angle_deg: positive for clockwise, negative for counter-clockwise.
@@ -413,20 +493,20 @@ class Robot:
         self.reset_encoders()
 
         # distance is exactly 2x that of a normal point turn.
-        max_spd    = max_speed * 10
-        min_spd    = min_speed * 10
-        spd_range  = max_spd - min_spd
-        arc_mm     = abs(angle_deg) / 360.0 * (2.0 * math.pi * AXLE_TRACK_MM)
-        target     = arc_mm / WHEEL_CIRC * 360.0 * TURN_CORRECTION
-        dirn       = 1 if angle_deg >= 0 else -1
-        accel_end  = target * accel_frac
-        decel_st   = target * (1.0 - decel_frac)
+        max_spd = max_speed * 10
+        min_spd = min_speed * 10
+        spd_range = max_spd - min_spd
+        arc_mm = abs(angle_deg) / 360.0 * (2.0 * math.pi * AXLE_TRACK_MM)
+        target = arc_mm / WHEEL_CIRC * 360.0 * TURN_CORRECTION
+        dirn = 1 if angle_deg >= 0 else -1
+        accel_end = target * accel_frac
+        decel_st = target * (1.0 - decel_frac)
         decel_dist = target - decel_st
 
-        la_func     = self.left_motor.angle
-        ra_func     = self.right_motor.angle
+        la_func = self.left_motor.angle
+        ra_func = self.right_motor.angle
 
-        if pivot_side == 'right':
+        if pivot_side == "right":
             active_run = self.left_motor.run
             active_ang = la_func
             self.right_motor.hold()
@@ -443,14 +523,15 @@ class Robot:
         while True:
             progress = abs(active_ang())
 
-            if progress >= target: break
+            if progress >= target:
+                break
 
             # inline trapezoid profile
             if progress <= accel_end:
-                t    = progress / accel_end if accel_end > 0.0 else 1.0
+                t = progress / accel_end if accel_end > 0.0 else 1.0
                 base = min_spd + spd_range * t
             elif progress >= decel_st:
-                t    = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
+                t = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
                 base = min_spd + spd_range * t
             else:
                 base = max_spd
@@ -466,10 +547,10 @@ class Robot:
         self.left_motor.run(-left_speed)
         self.right_motor.run(right_speed)
 
-#    _   _    ___ ___ _  _   __      __ _   _    _
-#   /_\ | |  |_ _/ __| \| |  \ \    / //_\ | |  | |
-#  / _ \| |__ | | (_ | .` |   \ \/\/ // _ \| |__| |__
-# /_/ \_\____|___\___|_|\_|    \_/\_//_/ \_\____|____|
+    #    _   _    ___ ___ _  _   __      __ _   _    _
+    #   /_\ | |  |_ _/ __| \| |  \ \    / //_\ | |  | |
+    #  / _ \| |__ | | (_ | .` |   \ \/\/ // _ \| |__| |__
+    # /_/ \_\____|___\___|_|\_|    \_/\_//_/ \_\____|____|
     def align_wall(self, power, time_ms, hold=True, kp=5):
         """
         runs the robot into a wall using PID sync to stay straight,
@@ -501,10 +582,14 @@ class Robot:
             r = power + correction
 
             # clamp power to prevent ramping up during stall
-            if l > max_pwr: l = max_pwr
-            elif l < -max_pwr: l = -max_pwr
-            if r > max_pwr: r = max_pwr
-            elif r < -max_pwr: r = -max_pwr
+            if l > max_pwr:
+                l = max_pwr
+            elif l < -max_pwr:
+                l = -max_pwr
+            if r > max_pwr:
+                r = max_pwr
+            elif r < -max_pwr:
+                r = -max_pwr
 
             self.left_motor.dc(-l)
             self.right_motor.dc(r)
@@ -515,11 +600,21 @@ class Robot:
         self.stop_drive(hold)
         self.log("Done: align wall")
 
-#  ___  ___ _____   __ ___   _   _ _  _ _____ ___ _    _    ___ _  _ ___
-# |   \| _ \_ _\ \ / /| __| | | | | \| |_   _|_ _| |  | |  |_ _| \| | __|
-# | |) |   /| | \ V / | _|  | |_| | .` | | |  | || |__| |__ | || .` | _|
-# |___/|_|_\___| \_/  |___|  \___/|_|\_| |_| |___|____|____|___|_|\_|___|
-    def drive_until_line(self, speed=40, threshold=LINE_EDGE, left_sensor='2', right_sensor='3', align=True, align_time=1000, align_target=LINE_EDGE, align_kp=3.0):
+    #  ___  ___ _____   __ ___   _   _ _  _ _____ ___ _    _    ___ _  _ ___
+    # |   \| _ \_ _\ \ / /| __| | | | | \| |_   _|_ _| |  | |  |_ _| \| | __|
+    # | |) |   /| | \ V / | _|  | |_| | .` | | |  | || |__| |__ | || .` | _|
+    # |___/|_|_\___| \_/  |___|  \___/|_|\_| |_| |___|____|____|___|_|\_|___|
+    def drive_until_line(
+        self,
+        speed=40,
+        threshold=LINE_EDGE,
+        left_sensor="2",
+        right_sensor="3",
+        align=True,
+        align_time=1000,
+        align_target=LINE_EDGE,
+        align_kp=3.0,
+    ):
         """
         drives straight until BOTH sensors detect the line (handles steep angles).
         speed: speed percentage (0-100).
@@ -550,7 +645,6 @@ class Robot:
 
         # wait until both sensors detect the line
         while not (l_found and r_found):
-
             # if left hits the line first, hold left motor and wait for right
             if not l_found and ls_ref() <= threshold:
                 self.left_motor.hold()
@@ -567,15 +661,29 @@ class Robot:
         self.stop_drive(hold=True)
 
         if align:
-            self.align_line(target_val=align_target, kp=align_kp, time_ms=align_time, left_sensor=left_sensor, right_sensor=right_sensor)
+            self.align_line(
+                target_val=align_target,
+                kp=align_kp,
+                time_ms=align_time,
+                left_sensor=left_sensor,
+                right_sensor=right_sensor,
+            )
 
         self.log("Done: drive until line")
 
-#  _____ ___    _   ___ _  _   _    ___ _  _ ___
-# |_   _| _ \  /_\ / __| |/ / | |  |_ _| \| | __|
-#   | | |   / / _ \ (__| ' <  | |__ | || .` | _|
-#   |_| |_|_\/_/ \_\___|_|\_\ |____|___|_|\_|___|
-    def track_line(self, speed=40, kp=1, kd=0.05, threshold=LINE_EDGE, left_sensor='2', right_sensor='3'):
+    #  _____ ___    _   ___ _  _   _    ___ _  _ ___
+    # |_   _| _ \  /_\ / __| |/ / | |  |_ _| \| | __|
+    #   | | |   / / _ \ (__| ' <  | |__ | || .` | _|
+    #   |_| |_|_\/_/ \_\___|_|\_\ |____|___|_|\_|___|
+    def track_line(
+        self,
+        speed=40,
+        kp=1,
+        kd=0.05,
+        threshold=LINE_EDGE,
+        left_sensor="2",
+        right_sensor="3",
+    ):
         """
         follows a line by keeping it between two sensors (straddling).
         stops when BOTH sensors detect black (intersection).
@@ -601,7 +709,6 @@ class Robot:
         gc.disable()
 
         while True:
-
             l_val = ls_ref()
             r_val = rs_ref()
 
@@ -627,7 +734,9 @@ class Robot:
         self.stop_drive(hold=True)
         self.log("Done: track line (intersection detected)")
 
-    def track_line_distance(self, distance_cm, speed=40, kp=2, kd=15, left_sensor='2', right_sensor='3'):
+    def track_line_distance(
+        self, distance_cm, speed=40, kp=2, kd=15, left_sensor="2", right_sensor="3"
+    ):
         """
         follows a line for a specific distance (in cm).
         distance_cm: distance to travel (cm).
@@ -675,7 +784,9 @@ class Robot:
         self.stop_drive(hold=True)
         self.log(f"Done: track line dist {distance_cm}cm")
 
-    def track_line_timer(self, time_ms, speed=40, kp=1.5, kd=0.5, left_sensor='2', right_sensor='3'):
+    def track_line_timer(
+        self, time_ms, speed=40, kp=1.5, kd=0.5, left_sensor="2", right_sensor="3"
+    ):
         """
         follows a line for a specific amount of time (in milliseconds).
         time_ms: time to travel (ms).
@@ -720,11 +831,19 @@ class Robot:
         self.stop_drive(hold=True)
         self.log(f"Done: track line timer {time_ms}ms")
 
-#    _   _    ___ ___ _  _   _    ___ _  _ ___
-#   /_\ | |  |_ _/ __| \| | | |  |_ _| \| | __|
-#  / _ \| |__ | | (_ | .` | | |__ | || .` | _|
-# /_/ \_\____|___\___|_|\_| |____|___|_|\_|___|
-    def align_line(self, target_val=LINE_EDGE, kp=3.0, time_ms=1500, left_sensor='2', right_sensor='3', hold=True):
+    #    _   _    ___ ___ _  _   _    ___ _  _ ___
+    #   /_\ | |  |_ _/ __| \| | | |  |_ _| \| | __|
+    #  / _ \| |__ | | (_ | .` | | |__ | || .` | _|
+    # /_/ \_\____|___\___|_|\_| |____|___|_|\_|___|
+    def align_line(
+        self,
+        target_val=LINE_EDGE,
+        kp=3.0,
+        time_ms=1500,
+        left_sensor="2",
+        right_sensor="3",
+        hold=True,
+    ):
         """
         aligns the robot perpendicularly to a line using independent proportional controllers.
         it actively seeks the edge of the line to prevent overshoot.
@@ -751,7 +870,6 @@ class Robot:
 
         watch = StopWatch()
         while watch.time() < time_ms:
-
             l_val = ls_ref()
             r_val = rs_ref()
 
@@ -765,10 +883,14 @@ class Robot:
             r_spd = r_err * kp
 
             # clamp max speed in deg/s to prevent violent wiggling
-            if l_spd > 250: l_spd = 250
-            elif l_spd < -250: l_spd = -250
-            if r_spd > 250: r_spd = 250
-            elif r_spd < -250: r_spd = -250
+            if l_spd > 250:
+                l_spd = 250
+            elif l_spd < -250:
+                l_spd = -250
+            if r_spd > 250:
+                r_spd = 250
+            elif r_spd < -250:
+                r_spd = -250
 
             # apply speed (left is inverted)
             l_run(-l_spd)
@@ -788,26 +910,42 @@ class Robot:
             self.left_motor.brake()
             self.right_motor.brake()
 
-# ██      ██ ███████ ████████
-# ██      ██ ██         ██
-# ██      ██ █████      ██
-# ██      ██ ██         ██
-# ███████ ██ ██         ██
-#
-# >> lift core (robotic arm mechanisms for gripping and lifting)
-# >> lift core (ระบบแขนกลสำหรับคีบและยกสิ่งของ)
-    def lift_a(self, angle=90, speed=50, wait=True):
+    # ██      ██ ███████ ████████
+    # ██      ██ ██         ██
+    # ██      ██ █████      ██
+    # ██      ██ ██         ██
+    # ███████ ██ ██         ██
+    #
+    # >> lift core (robotic arm mechanisms for gripping and lifting)
+    # >> lift core (ระบบแขนกลสำหรับคีบและยกสิ่งของ)
+    def lift_a(self, angle=90, speed=50, power=100, wait=True):
         # angle = ตำแหน่งเป้าหมายเป็นองศา (นับจากจุด reset_angle(0)) (target position in degrees, from reset_angle(0))
         self.log(f"Start: Lift A (angle={angle})")
         if self.lift_motor_a:
+            self.lift_motor_a.stop()
+            self.lift_motor_a.control.limits(
+                speed=1000, acceleration=2000, actuation=power
+            )
             self.lift_motor_a.run_target(speed * 10, angle, then=Stop.HOLD, wait=wait)
+            if wait:
+                self.lift_motor_a.control.limits(
+                    speed=1000, acceleration=2000, actuation=100
+                )
         self.log("Done: Lift A")
 
-    def lift_d(self, angle=90, speed=50, wait=True):
+    def lift_d(self, angle=90, speed=50, power=100, wait=True):
         # angle = ตำแหน่งเป้าหมายเป็นองศา (นับจากจุด reset_angle(0)) (target position in degrees, from reset_angle(0))
         self.log(f"Start: Lift D (angle={angle})")
         if self.lift_motor_d:
+            self.lift_motor_d.stop()
+            self.lift_motor_d.control.limits(
+                speed=1000, acceleration=2000, actuation=power
+            )
             self.lift_motor_d.run_target(speed * 10, angle, then=Stop.HOLD, wait=wait)
+            if wait:
+                self.lift_motor_d.control.limits(
+                    speed=1000, acceleration=2000, actuation=100
+                )
         self.log("Done: Lift D")
 
     def reset_lift_a(self, angle=0):
@@ -822,20 +960,22 @@ class Robot:
 
     def release_a(self):
         self.log("Release A")
-        if self.lift_motor_a: self.lift_motor_a.stop()
+        if self.lift_motor_a:
+            self.lift_motor_a.stop()
 
     def release_d(self):
         self.log("Release D")
-        if self.lift_motor_d: self.lift_motor_d.stop()
+        if self.lift_motor_d:
+            self.lift_motor_d.stop()
 
-#  ██████  ███████ ███    ██  ██████   ██████  ██████   ██████
-# ██       ██      ████   ██ ██       ██    ██ ██   ██ ██
-#  █████   █████   ██ ██  ██  █████   ██    ██ ██████   █████
-#      ██  ██      ██  ██ ██      ██  ██    ██ ██   ██      ██
-# ██████   ███████ ██   ████ ██████    ██████  ██   ██ ██████
-#
-# >> sensor core (light values, calibration, and line detection)
-# >> sensor core (ระบบจัดการค่าแสง คาลิเบรต และเช็คเส้น)
+    #  ██████  ███████ ███    ██  ██████   ██████  ██████   ██████
+    # ██       ██      ████   ██ ██       ██    ██ ██   ██ ██
+    #  █████   █████   ██ ██  ██  █████   ██    ██ ██████   █████
+    #      ██  ██      ██  ██ ██      ██  ██    ██ ██   ██      ██
+    # ██████   ███████ ██   ████ ██████    ██████  ██   ██ ██████
+    #
+    # >> sensor core (light values, calibration, and line detection)
+    # >> sensor core (ระบบจัดการค่าแสง คาลิเบรต และเช็คเส้น)
     def calibrate_2sensor_offset(self, seconds=2):
         self.log("Start: Calibrating Offset")
         self.hub.speaker.beep(500, 150)
@@ -856,38 +996,49 @@ class Robot:
         maps raw sensor reflection values to a 0-100 percentage.
         formula: result = ((raw - black_raw) / (white_raw - black_raw)) * 100
         """
-        if self.white_raw == self.black_raw: return 50
-        return clamp((raw - self.black_raw) / (self.white_raw - self.black_raw) * 100, 0, 100)
+        if self.white_raw == self.black_raw:
+            return 50
+        return clamp(
+            (raw - self.black_raw) / (self.white_raw - self.black_raw) * 100, 0, 100
+        )
 
     def check_border(self, threshold=15):
         return self.sensor_4.reflection() < threshold
 
     def check_intersection(self, threshold=15):
-        return self.sensor_3.reflection() < threshold and self.sensor_4.reflection() < threshold
+        return (
+            self.sensor_3.reflection() < threshold
+            and self.sensor_4.reflection() < threshold
+        )
 
-# ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
-# ██    ██    ██    ██ ██      ██    ██    ██      ██
-# ██    ██    ██    ██ ██      ██    ██    █████   ███████
-# ██    ██    ██    ██ ██      ██    ██    ██           ██
-#  ██████     ██    ██ ███████ ██    ██    ███████ ███████
-#
-# >> utility core (helper functions, encoders, printing)
-# >> utility core (ฟังก์ชันช่วยเหลือย่อย เช็คเอนโค้ดเดอร์ สั่ง print)
+    # ██    ██ ████████ ██ ██      ██ ████████ ███████ ███████
+    # ██    ██    ██    ██ ██      ██    ██    ██      ██
+    # ██    ██    ██    ██ ██      ██    ██    █████   ███████
+    # ██    ██    ██    ██ ██      ██    ██    ██           ██
+    #  ██████     ██    ██ ███████ ██    ██    ███████ ███████
+    #
+    # >> utility core (helper functions, encoders, printing)
+    # >> utility core (ฟังก์ชันช่วยเหลือย่อย เช็คเอนโค้ดเดอร์ สั่ง print)
     def reset_encoders(self):
         self.left_motor.reset_angle(0)
         self.right_motor.reset_angle(0)
 
-    def get_left_angle(self): return -self.left_motor.angle()
-    def get_right_angle(self): return self.right_motor.angle()
-    def avg_angle(self): return (abs(self.get_left_angle()) + abs(self.get_right_angle())) / 2
+    def get_left_angle(self):
+        return -self.left_motor.angle()
+
+    def get_right_angle(self):
+        return self.right_motor.angle()
+
+    def avg_angle(self):
+        return (abs(self.get_left_angle()) + abs(self.get_right_angle())) / 2
 
     def check_battery(self):
         """
         reads the ev3 battery voltage and current using pybricks 4.0 api.
         formula: percent = ((voltage - 7.0v) / (8.2v - 7.0v)) * 100
         """
-        volts   = self.hub.battery.voltage() / 1000.0
-        amps    = self.hub.battery.current() / 1000.0
+        volts = self.hub.battery.voltage() / 1000.0
+        amps = self.hub.battery.current() / 1000.0
         percent = clamp((volts - 7.0) / (8.2 - 7.0) * 100, 0, 100)
         self.log(f"BATTERY: {volts:.2f}V ({percent:.0f}%) | CURRENT: {amps:.2f}A")
 
@@ -896,6 +1047,7 @@ class Robot:
         # *       เพื่อลดภาระ CPU ตอนแข่งจริง (เซฟแบต/ลดแลค) ให้เอา # หน้าคำว่า pass ออก และใส่ # หน้า print แทน
         # pass
         print(f"[ROBOT] {text}")
+
 
 #  __  __    _    ___ _   _   _     ___   ___  ____
 # |  \/  |  / \  |_ _| \ | | | |   / _ \ / _ \|  _ \
@@ -906,62 +1058,15 @@ class Robot:
 # >> main execution (mission scripts and logic)
 # >> main execution (โค้ดสำหรับรันภารกิจจริง)
 if __name__ == "__main__":
+    # for english documentation, please read: API_REFERENCE.md
+    # คู่มือภาษาไทยและอธิบายพารามิเตอร์อย่างละเอียด: API_REFERENCE_TH.md
     robot = Robot()
     robot.hub.speaker.beep(1047, 200)
     wait(100)
     robot.hub.speaker.beep(1319, 300)
-    #   * ===============================================
-    #   *  CHEAT SHEET: ตัวอย่างการเรียกใช้ทุกฟังก์ชัน
-    #   * ===============================================
-        # 1. การเคลื่อนที่พื้นฐาน (basi0c movements)
-        # robot.move_straight(50, max_speed=50)         # วิ่งตรง 50 ซม. ความเร็ว 50 (move straight 50 cm at speed 50)
-        # robot.move_straight(-20, max_speed=40)        # ถอยหลัง 20 ซม. (move backward 20 cm)
-        # robot.turn(90, max_speed=40)                  # เลี้ยวขวา 90 องศา (point turn right 90 degrees)
-        # robot.turn(-90, max_speed=40)                 # เลี้ยวซ้าย 90 องศา (point turn left 90 degrees)
 
-        # 2. การเลี้ยวแบบวงกว้าง (pivot turn)
-        # robot.pivot_turn(90, pivot_side='right')      # ล้อขวาหยุดนิ่ง ล้อซ้ายเดินหน้า (pivot turn right)
-        # robot.pivot_turn(-90, pivot_side='left')      # ล้อซ้ายหยุดนิ่ง ล้อขวาถอยหลัง (pivot turn backward left)
-
-        # 3. การชนกำแพงตั้งลำ (wall squaring)
-        # robot.align_wall(power=-50, time_ms=1500)     # ถอยชนกำแพงด้วยพลัง -50 เป็นเวลา 1.5 วิ (square against wall for 1.5s)
-
-        # 4. การจัดการเซ็นเซอร์แสง (line & sensors)
-        # robot.drive_until_line(speed=40, align=True)  # วิ่งไปหาเส้นดำ เจอแล้วเทียบเส้นให้ตรงอัตโนมัติ (drive until black line and auto-align)
-        # robot.align_line(time_ms=1500)                # สั่งเทียบเส้นดำเฉยๆ เป็นเวลา 1.5 วิ (align to the line for 1.5s)
-
-        # หมายเหตุ: track_line ตอนนี้เป็นการเกาะเส้นจนกว่าจะเจอทางแยก (stops at intersection)
-        # robot.track_line(speed=40, kp=1.5, kd=0.5)
-        # robot.track_line_distance(15, speed=40)       # เกาะเส้นไปข้างหน้าเป็นระยะ 15 ซม. (track line for 15 cm)
-        # robot.track_line_timer(2000, speed=40)        # เกาะเส้นไปข้างหน้าเป็นเวลา 2 วินาที (track line for 2000 ms)
-
-        # ตัวอย่างการเกาะเส้นแบบสลับเซนเซอร์ (dynamic sensor tracking)
-        # robot.track_line_distance(15, left_sensor='1', right_sensor='2') # ใช้เซนเซอร์ 1 และ 2 เกาะเส้น (track with sensors 1 and 2)
-
-        # 5. การบังคับมอเตอร์แขนกล (grippers)
-        # robot.reset_lift_d(0)                         # เซ็ตจุด 0 องศาของแขน D ตอนเริ่ม (zero arm D's angle at startup/homing)
-        # robot.lift_d(angle=90, speed=80)              # หมุนแขน D ไปที่ 90 องศาแล้วล็อกค้าง (rotate arm D to 90 deg and hold)
-        # robot.lift_d(angle=0, speed=80)               # หมุนแขน D กลับที่ 0 องศา (rotate arm D back to 0 deg)
-        # robot.release_d()                             # ปล่อยแขน D พักมอเตอร์ (release arm D motor)
-        # robot.reset_lift_a(0)                         # เซ็ตจุด 0 องศาของแขน A ตอนเริ่ม (zero arm A's angle at startup/homing)
-        # robot.lift_a(angle=45, speed=50)              # หมุนแขน A ไปที่ 45 องศาแล้วล็อกค้าง (rotate arm A to 45 deg and hold)
-        # robot.lift_a(angle=45, speed=50, wait=False)  # สั่งไปที่ 45 องศาแบบไม่รอ (non-blocking version, code จะรันต่อทันที)
-        # robot.release_a()                             # ปล่อยแขน A พักมอเตอร์ (release arm A motor)
-
-        # 6. คำสั่งอื่นๆ (misc)
-        # robot.drive(300, 300)                         # สั่งมอเตอร์วิ่งตรงๆ ความเร็ว 300 องศา/วิ (drive motors raw at 300 deg/s)
-        # robot.stop_drive(hold=True)                   # สั่งเบรกและล็อกล้อ (stop and hold wheels)
-        # robot.reset_encoders()                        # รีเซ็ตค่าองศาล้อให้เป็น 0 (reset motor encoders to 0)
-        # robot.check_battery()                         # เช็คแบตเตอรี่พิมพ์ออกจอคอม (print battery status to console)
-        # offset = robot.calibrate_2sensor_offset()     # หมุนซ้ายขวาเพื่อหาค่าชดเชยเซนเซอร์ให้เท่ากัน (calibrate sensor offset)
-
-    #   * ===============================================
-    #   *  RUN: รันตรงนี้
-    #   * ===============================================
+    # * ===============================================
+    # *  RUN: รันตรงนี้
+    # * ===============================================
     robot.check_battery()
     wait(500)
-    robot.align_wall(power=-60, time_ms=6000)
-    robot.move_straight(18, max_speed=50)
-    robot.turn(90, max_speed=60)
-    robot.track_line_distance(75, speed=40)
-    
