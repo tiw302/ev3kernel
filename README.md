@@ -382,7 +382,7 @@ If you encounter any issues, your robot isn't running straight, or you have ques
 | Profile | Name / GitHub | Role & Contributions |
 | :---: | :--- | :--- |
 | <img src="https://avatars.githubusercontent.com/u/140261965?v=4" width="50" style="border-radius: 50%;"> | **[@tiw302](https://github.com/tiw302)** | **Lead Developer & Architect** <br> System architecture, mathematical implementation, and memory optimization. |
-| ⏳ *(Pending GitHub)* | **[Waiting for friend to join GitHub]** | **Lead Tester & Field Engineer** <br> Field testing, PID tuning, and hardware debugging. |
+| <img src="https://avatars.githubusercontent.com/u/171816935?v=4" width="50" style="border-radius: 50%;"> | **[@bosskub56](https://github.com/bosskub56)** | **Lead Tester & Field Engineer** <br> Field testing, PID tuning, and hardware debugging. |
 
 ---
 
