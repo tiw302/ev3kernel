@@ -23,3 +23,11 @@ docs/pybricks-api
 
 # gemini
 GEMINI.md
+
+# video & logs
+*.log
+*.mp4
+.venv/
+
+# scripts
+scripts/

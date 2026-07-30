@@ -77,6 +77,7 @@ from micropython import const
 
 from config import *
 
+
 def clamp(v, lo, hi):
     if v < lo:
         return lo
@@ -189,13 +190,13 @@ class Robot:
     def move_straight(
         self,
         distance_cm,
-        max_speed=40,
-        min_speed=20,
-        kp=15,
-        ki=.8,
-        kd=.25,
-        accel_frac=.25,
-        decel_frac=.30,
+        max_speed=MOVE_STRAIGHT_CFG["speed_max"],
+        min_speed=MOVE_STRAIGHT_CFG["speed_start"],
+        kp=MOVE_STRAIGHT_CFG["kp"],
+        ki=MOVE_STRAIGHT_CFG["ki"],
+        kd=MOVE_STRAIGHT_CFG["kd"],
+        accel_frac=0.25,
+        decel_frac=0.30,
     ):
         """
         drives straight by synchronizing left and right wheels using a pid controller.
@@ -216,11 +217,11 @@ class Robot:
         decel_st = target * (1.0 - decel_frac)
         decel_dist = target - decel_st
         pid_ilim = 100.0
-        pid_maxout = max_spd * .4
+        pid_maxout = max_spd * 0.4
         db = DEADBAND_SPEED
         db_thresh = min_spd * 1.5
-        d_alpha = .2
-        d_alpha_i = .8  # 1.0 - d_alpha (pre-computed)
+        d_alpha = 0.2
+        d_alpha_i = 0.8  # 1.0 - d_alpha (pre-computed)
 
         # cache bound method refs — eliminates attribute lookup on every iteration
         la_func = self.left_motor.angle
@@ -232,9 +233,9 @@ class Robot:
         lw_reset = lw.reset
 
         # pid state as plain locals — local var access is fastest in micropython
-        pid_integral = .0
+        pid_integral = 0.0
         pid_prev = None
-        pid_d_filt = .0
+        pid_d_filt = 0.0
 
         gc.collect()
         gc.disable()
@@ -242,23 +243,23 @@ class Robot:
         while True:
             la = -la_func()
             ra = ra_func()
-            progress = (abs(la) + abs(ra)) * .5
+            progress = (abs(la) + abs(ra)) * 0.5
 
             if progress >= target:
                 break
 
             # real dt via multiply (faster than divide by 1000)
-            dt = lw_time() * .001
+            dt = lw_time() * 0.001
             lw_reset()
-            if dt <= .0:
-                dt = .01
+            if dt <= 0.0:
+                dt = 0.01
 
             # inline trapezoid profile — no function call overhead
             if progress <= accel_end:
-                t = progress / accel_end if accel_end > .0 else 1.0
+                t = progress / accel_end if accel_end > 0.0 else 1.0
                 base = (min_spd + spd_range * t) * dirn
             elif progress >= decel_st:
-                t = (target - progress) / decel_dist if decel_dist > .0 else .0
+                t = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
                 base = (min_spd + spd_range * t) * dirn
             else:
                 base = max_spd * dirn
@@ -286,7 +287,7 @@ class Robot:
             correction = p_out + i_out + d_out
 
             # back-calc anti-windup — inline, no function call
-            if ki > .0:
+            if ki > 0.0:
                 if correction > pid_maxout:
                     clamped = pid_maxout
                 elif correction < -pid_maxout:
@@ -339,13 +340,13 @@ class Robot:
     def turn(
         self,
         angle_deg,
-        max_speed=20,
-        min_speed=6,
-        kp=2,
-        ki=.01,
-        kd=.3,
-        accel_frac=.30,
-        decel_frac=.35,
+        max_speed=TURN_CFG["speed_max"],
+        min_speed=TURN_CFG["speed_start"],
+        kp=TURN_CFG["kp"],
+        ki=TURN_CFG["ki"],
+        kd=TURN_CFG["kd"],
+        accel_frac=0.30,
+        decel_frac=0.35,
     ):
         """
         performs a precise point-turn by spinning wheels in opposite directions.
@@ -367,8 +368,8 @@ class Robot:
         decel_st = target * (1.0 - decel_frac)
         decel_dist = target - decel_st
         pid_ilim = 80.0
-        d_alpha = .2
-        d_alpha_i = .8
+        d_alpha = 0.2
+        d_alpha_i = 0.8
 
         # cache bound method refs
         la_func = self.left_motor.angle
@@ -380,9 +381,9 @@ class Robot:
         lw_reset = lw.reset
 
         # pid state as locals
-        pid_integral = .0
+        pid_integral = 0.0
         pid_prev = None
-        pid_d_filt = .0
+        pid_d_filt = 0.0
 
         gc.collect()
         gc.disable()
@@ -390,22 +391,22 @@ class Robot:
         while True:
             la = -la_func()
             ra = ra_func()
-            progress = (abs(la) + abs(ra)) * .5
+            progress = (abs(la) + abs(ra)) * 0.5
 
             if progress >= target:
                 break
 
-            dt = lw_time() * .001
+            dt = lw_time() * 0.001
             lw_reset()
-            if dt <= .0:
-                dt = .01
+            if dt <= 0.0:
+                dt = 0.01
 
             # inline trapezoid profile
             if progress <= accel_end:
-                t = progress / accel_end if accel_end > .0 else 1.0
+                t = progress / accel_end if accel_end > 0.0 else 1.0
                 base = min_spd + spd_range * t
             elif progress >= decel_st:
-                t = (target - progress) / decel_dist if decel_dist > .0 else .0
+                t = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
                 base = min_spd + spd_range * t
             else:
                 base = max_spd
@@ -453,10 +454,10 @@ class Robot:
         self,
         angle_deg,
         pivot_side="right",
-        max_speed=100,
-        min_speed=10,
-        accel_frac=.2,
-        decel_frac=.2,
+        max_speed=TURN_CFG["speed_max"],
+        min_speed=TURN_CFG["speed_start"],
+        accel_frac=0.2,
+        decel_frac=0.2,
     ):
         """
         turns the robot by moving only one wheel (pivot turn) with trapezoidal profile.
@@ -502,10 +503,10 @@ class Robot:
 
             # inline trapezoid profile
             if progress <= accel_end:
-                t = progress / accel_end if accel_end > .0 else 1.0
+                t = progress / accel_end if accel_end > 0.0 else 1.0
                 base = min_spd + spd_range * t
             elif progress >= decel_st:
-                t = (target - progress) / decel_dist if decel_dist > .0 else .0
+                t = (target - progress) / decel_dist if decel_dist > 0.0 else 0.0
                 base = min_spd + spd_range * t
             else:
                 base = max_spd
@@ -559,14 +560,14 @@ class Robot:
     # |___/|_|_\___| \_/  |___|  \___/|_|\_| |_| |___|____|____|___|_|\_|___|
     def drive_until_line(
         self,
-        speed=40,
-        threshold=LINE_EDGE,
+        speed=TRACK_LINE_CFG["speed"],
+        threshold=TRACK_LINE_CFG["threshold"],
         left_sensor="2",
         right_sensor="3",
         align=True,
-        align_time_sec=1.0,
-        align_target=LINE_EDGE,
-        align_kp=3.0,
+        align_time_sec=ALIGN_LINE_CFG["time_sec"],
+        align_target=ALIGN_LINE_CFG["target_val"],
+        align_kp=ALIGN_LINE_CFG["kp"],
     ):
         """
         drives straight until BOTH sensors detect the line (handles steep angles).
@@ -631,12 +632,13 @@ class Robot:
     #   |_| |_|_\/_/ \_\___|_|\_\ |____|___|_|\_|___|
     def track_line(
         self,
-        speed=40,
-        kp=.75,
-        kd=6.5,
-        threshold=LINE_EDGE,
+        speed=TRACK_LINE_CFG["speed"],
+        kp=TRACK_LINE_CFG["kp"],
+        kd=TRACK_LINE_CFG["kd"],
+        threshold=TRACK_LINE_CFG["threshold"],
         left_sensor="2",
         right_sensor="3",
+        edge="center",
     ):
         """
         world-class competition pd line tracking (wro / fll grade).
@@ -658,8 +660,9 @@ class Robot:
         w_raw = float(self.white_raw)
         span = max(1.0, w_raw - b_raw)
 
-        last_error = .0
-        d_filt = .0
+        last_error = 0.0
+        d_filt = 0.0
+        last_turn = 0.0
 
         gc.collect()
         gc.disable()
@@ -673,22 +676,32 @@ class Robot:
                 break
 
             # normalize sensors [.0 = black, 1.0 = white]
-            l_norm = clamp((l_val - b_raw) / span, .0, 1.0)
-            r_norm = clamp((r_val - b_raw) / span, .0, 1.0)
+            l_norm = clamp((l_val - b_raw) / span, 0.0, 1.0)
+            r_norm = clamp((r_val - b_raw) / span, 0.0, 1.0)
 
-            # normalized error [-100.0, +100.0]
-            error = (l_norm - r_norm) * 100.0
+            # edge tracking mode
+            if edge == "left":
+                error_raw = (l_norm - 0.5) * 200.0
+            elif edge == "right":
+                error_raw = (0.5 - r_norm) * 200.0
+            else:
+                # intersection smoothing: force straight if both sensors are dark
+                if l_norm < 0.35 and r_norm < 0.35:
+                    error_raw = 0.0
+                else:
+                    error_raw = (l_norm - r_norm) * 100.0
 
-            # ema filtered derivative (removes optical noise)
-            d_raw = error - last_error
-            d_filt = .35 * d_raw + .65 * d_filt
+            error = error_raw
+            # anti-jerk derivative suppression (ignores thick side-lines when in center mode)
+            d_raw = clamp(error - last_error, -20.0, 20.0)
+            d_filt = 0.35 * d_raw + 0.65 * d_filt
 
             turn = (error * kp) + (d_filt * kd)
 
             # quadratic speed compensation based on turn sharpness
-            turn_ratio = clamp(abs(turn) / 50.0, .0, 1.0)
+            turn_ratio = clamp(abs(turn) / 50.0, 0.0, 1.0)
             current_base = max(
-                speed * .2, speed * (1.0 - .65 * turn_ratio * turn_ratio)
+                speed * 0.2, speed * (1.0 - 0.65 * turn_ratio * turn_ratio)
             )
 
             l_dc = clamp(current_base + turn, -100, 100)
@@ -705,7 +718,14 @@ class Robot:
         self.log("Done: track line (intersection detected)")
 
     def track_line_distance(
-        self, distance_cm, speed=40, kp=.75, kd=6.5, left_sensor="2", right_sensor="3"
+        self,
+        distance_cm,
+        speed=TRACK_LINE_DISTANCE_CFG["speed"],
+        kp=TRACK_LINE_DISTANCE_CFG["kp"],
+        kd=TRACK_LINE_DISTANCE_CFG["kd"],
+        left_sensor="2",
+        right_sensor="3",
+        edge="center",
     ):
         """
         follows a line for a specific distance (in cm) using world-class pd.
@@ -730,8 +750,9 @@ class Robot:
         w_raw = float(self.white_raw)
         span = max(1.0, w_raw - b_raw)
 
-        last_error = .0
-        d_filt = .0
+        last_error = 0.0
+        d_filt = 0.0
+        last_turn = 0.0
 
         gc.collect()
         gc.disable()
@@ -741,22 +762,32 @@ class Robot:
             r_val = rs_ref()
 
             # normalize sensors [.0 = black, 1.0 = white]
-            l_norm = clamp((l_val - b_raw) / span, .0, 1.0)
-            r_norm = clamp((r_val - b_raw) / span, .0, 1.0)
+            l_norm = clamp((l_val - b_raw) / span, 0.0, 1.0)
+            r_norm = clamp((r_val - b_raw) / span, 0.0, 1.0)
 
-            # normalized error [-100.0, +100.0]
-            error = (l_norm - r_norm) * 100.0
+            # edge tracking mode
+            if edge == "left":
+                error_raw = (l_norm - 0.5) * 200.0
+            elif edge == "right":
+                error_raw = (0.5 - r_norm) * 200.0
+            else:
+                # intersection smoothing: force straight if both sensors are dark
+                if l_norm < 0.35 and r_norm < 0.35:
+                    error_raw = 0.0
+                else:
+                    error_raw = (l_norm - r_norm) * 100.0
 
-            # ema filtered derivative
-            d_raw = error - last_error
-            d_filt = .35 * d_raw + .65 * d_filt
+            error = error_raw
+            # anti-jerk derivative suppression (ignores thick side-lines when in center mode)
+            d_raw = clamp(error - last_error, -20.0, 20.0)
+            d_filt = 0.35 * d_raw + 0.65 * d_filt
 
             turn = (error * kp) + (d_filt * kd)
 
             # quadratic speed compensation
-            turn_ratio = clamp(abs(turn) / 50.0, .0, 1.0)
+            turn_ratio = clamp(abs(turn) / 50.0, 0.0, 1.0)
             current_base = max(
-                speed * .2, speed * (1.0 - .65 * turn_ratio * turn_ratio)
+                speed * 0.2, speed * (1.0 - 0.65 * turn_ratio * turn_ratio)
             )
 
             l_dc = clamp(current_base + turn, -100, 100)
@@ -773,7 +804,13 @@ class Robot:
         self.log(f"Done: track line dist {distance_cm}cm")
 
     def track_line_timer(
-        self, time_sec, speed=40, kp=.75, kd=6.5, left_sensor="2", right_sensor="3"
+        self,
+        time_sec,
+        speed=TRACK_LINE_TIMER_CFG["speed"],
+        kp=TRACK_LINE_TIMER_CFG["kp"],
+        kd=TRACK_LINE_TIMER_CFG["kd"],
+        left_sensor="2",
+        right_sensor="3",
     ):
         """
         follows a line for a specific amount of time (in milliseconds) using world-class pd.
@@ -795,8 +832,8 @@ class Robot:
         w_raw = float(self.white_raw)
         span = max(1.0, w_raw - b_raw)
 
-        last_error = .0
-        d_filt = .0
+        last_error = 0.0
+        d_filt = 0.0
 
         gc.collect()
         gc.disable()
@@ -806,22 +843,32 @@ class Robot:
             r_val = rs_ref()
 
             # normalize sensors [.0 = black, 1.0 = white]
-            l_norm = clamp((l_val - b_raw) / span, .0, 1.0)
-            r_norm = clamp((r_val - b_raw) / span, .0, 1.0)
+            l_norm = clamp((l_val - b_raw) / span, 0.0, 1.0)
+            r_norm = clamp((r_val - b_raw) / span, 0.0, 1.0)
 
-            # normalized error [-100.0, +100.0]
-            error = (l_norm - r_norm) * 100.0
+            # intersection smoothing: force straight if both sensors are dark
+            if l_norm < 0.35 and r_norm < 0.35:
+                error = 0.0
+            else:
+                error = (l_norm - r_norm) * 100.0
 
-            # ema filtered derivative
-            d_raw = error - last_error
-            d_filt = .35 * d_raw + .65 * d_filt
+            # anti-jerk derivative suppression
+            error_jump = error - last_error
+            if abs(error_jump) > 20.0:
+                d_raw = 0.0
+            else:
+                d_raw = error_jump
 
-            turn = (error * kp) + (d_filt * kd)
+            d_filt = 0.35 * d_raw + 0.65 * d_filt
+
+            raw_turn = (error * kp) + (d_filt * kd)
+            turn = clamp(raw_turn, last_turn - 15.0, last_turn + 15.0)
+            last_turn = turn
 
             # quadratic speed compensation
-            turn_ratio = clamp(abs(turn) / 50.0, .0, 1.0)
+            turn_ratio = clamp(abs(turn) / 50.0, 0.0, 1.0)
             current_base = max(
-                speed * .2, speed * (1.0 - .65 * turn_ratio * turn_ratio)
+                speed * 0.2, speed * (1.0 - 0.65 * turn_ratio * turn_ratio)
             )
 
             l_dc = clamp(current_base + turn, -100, 100)
@@ -843,10 +890,10 @@ class Robot:
     # /_/ \_\____|___\___|_|\_| |____|___|_|\_|___|
     def align_line(
         self,
-        speed=30,
-        target_val=LINE_EDGE,
-        kp=1.0,
-        time_sec=1.0,
+        speed=ALIGN_LINE_CFG["speed_start"],
+        target_val=ALIGN_LINE_CFG["target_val"],
+        kp=ALIGN_LINE_CFG["kp"],
+        time_sec=ALIGN_LINE_CFG["time_sec"],
         left_sensor="2",
         right_sensor="3",
         hold=True,
@@ -938,7 +985,7 @@ class Robot:
     #
     # >> lift core (robotic arm mechanisms for gripping and lifting)
     # >> lift core (ระบบแขนกลสำหรับคีบและยกสิ่งของ)
-    def lift_a(self, angle=90, speed=50, power=100, wait=True):
+    def lift_a(self, angle=90, speed=LIFT_CFG["speed"], power=100, wait=True):
         # move arm using direct raw dc voltage. eliminates pid jerking under heavy load.
         self.log(f"Start: Lift A (angle={angle})")
         if not self.lift_motor_a:
@@ -974,7 +1021,7 @@ class Robot:
             self.lift_motor_a.hold()
         self.log("Done: Lift A")
 
-    def lift_d(self, angle=90, speed=50, power=100, wait=True):
+    def lift_d(self, angle=90, speed=LIFT_CFG["speed"], power=100, wait=True):
         # move heavy arm using direct raw dc voltage. eliminates pid jerking under heavy load.
         self.log(f"Start: Lift D (angle={angle})")
         if not self.lift_motor_d:
@@ -1042,14 +1089,14 @@ class Robot:
         self.log("Start: Calibrating Offset")
         self.hub.speaker.beep(500, 150)
         watch = StopWatch()
-        total, count = .0, 0
+        total, count = 0.0, 0
         while watch.time() < seconds * 1000:
             total += self.sensor_3.reflection() - self.sensor_4.reflection()
             count += 1
             wait(10)
 
         self.hub.speaker.beep(800, 150)
-        offset = total / count if count > 0 else .0
+        offset = total / count if count > 0 else 0.0
         self.log(f"Done: OFFSET {offset:.2f}")
         return offset
 

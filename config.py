@@ -23,9 +23,9 @@ from micropython import const
 #
 # >> robot hardware configuration
 WHEEL_DIAMETER_MM = 56.0  # diameter of the wheels in mm. used for travel distance.
-                          # เส้นผ่านศูนย์กลางล้อ (มม.) ใช้คำนวณระยะทาง
-AXLE_TRACK_MM = 120.0     # distance between wheels in mm. used for turn arc.
-                          # ระยะห่างระหว่างล้อซ้าย-ขวา (มม.) ใช้คำนวณวงเลี้ยว
+# เส้นผ่านศูนย์กลางล้อ (มม.) ใช้คำนวณระยะทาง
+AXLE_TRACK_MM = 120.0  # distance between wheels in mm. used for turn arc.
+# ระยะห่างระหว่างล้อซ้าย-ขวา (มม.) ใช้คำนวณวงเลี้ยว
 WHEEL_CIRC = math.pi * WHEEL_DIAMETER_MM
 
 #  _____ _   _ _   _ ___ _   _  ____
@@ -35,20 +35,20 @@ WHEEL_CIRC = math.pi * WHEEL_DIAMETER_MM
 #   |_|  \___/|_| \_|___|_| \_|\____|
 #
 # >> tuning parameters
-DISTANCE_CORRECTION = .9  # fix slip on straight
-                           # ตัวคูณชดเชยระยะทาง
-TURN_CORRECTION = 1.45     # fix slip on turns
-                           # ตัวคูณชดเชยองศาเลี้ยว
-DEADBAND_SPEED = const(60) # min power to overcome motor stiction at low speed
-                           # พลังงานขั้นต่ำเพื่อเอาชนะความฝืดมอเตอร์ตอนออกตัว
+DISTANCE_CORRECTION = 0.9  # fix slip on straight
+# ตัวคูณชดเชยระยะทาง
+TURN_CORRECTION = 1.45  # fix slip on turns
+# ตัวคูณชดเชยองศาเลี้ยว
+DEADBAND_SPEED = const(60)  # min power to overcome motor stiction at low speed
+# พลังงานขั้นต่ำเพื่อเอาชนะความฝืดมอเตอร์ตอนออกตัว
 
 # * calibrate this before match via debug.py (ต้องคาลิเบรตใหม่ก่อนแข่งเสมอ ผ่านไฟล์ debug.py)
-WHITE_LIGHT = const(34)    # average reflection on white surface
-                           # ค่าความสว่างพื้นสีขาว
-BLACK_LIGHT = const(4)     # average reflection on black line
-                           # ค่าความมืดเส้นสีดำ
+WHITE_LIGHT = const(31)  # average reflection on white surface
+# ค่าความสว่างพื้นสีขาว
+BLACK_LIGHT = const(3)  # average reflection on black line
+# ค่าความมืดเส้นสีดำ
 LINE_EDGE = (WHITE_LIGHT + BLACK_LIGHT) / 2  # automatic midpoint threshold
-                                             # คำนวณค่ากึ่งกลางอัตโนมัติ
+# คำนวณค่ากึ่งกลางอัตโนมัติ
 
 #  _____ _   _ _   _  ____ _____ ___ ___  _   _ ____
 # |  ___| | | | \ | |/ ___|_   _|_ _/ _ \| \ | / ___|
@@ -74,27 +74,18 @@ LINE_EDGE = (WHITE_LIGHT + BLACK_LIGHT) / 2  # automatic midpoint threshold
 
 # used for configuring line tracking until cross intersection is detected
 # ใช้สำหรับตั้งค่าการวิ่งเกาะเส้นจนกว่าจะเจอเส้นตัดขวาง
-TRACK_LINE_CFG = {
-    "speed": 40,
-    "kp": .75,
-    "kd": 6.5,
-    "threshold": LINE_EDGE
-}
+TRACK_LINE_CFG = {"speed": 40, "kp": 0.75, "kd": 6.5, "threshold": LINE_EDGE}
 
 # used for configuring line tracking by distance (cm)
 # ใช้สำหรับตั้งค่าการวิ่งเกาะเส้นแบบกำหนดระยะทาง (เซนติเมตร)
-TRACK_LINE_DISTANCE_CFG = {
-    "speed": 40,
-    "kp": .75,
-    "kd": 6.5
-}
+TRACK_LINE_DISTANCE_CFG = {"speed": 40, "kp": 0.1, "kd": 3.1}
 
 # used for configuring line tracking by time (sec)
 # ใช้สำหรับตั้งค่าการวิ่งเกาะเส้นแบบจับเวลา (วินาที)
 TRACK_LINE_TIMER_CFG = {
     "speed": 40,
-    "kp": .75,
-    "kd": 6.5
+    "kp": 0.75,
+    "kd": 0.5,
 }
 
 # used for aligning the robot perpendicular to a cross line
@@ -104,7 +95,7 @@ ALIGN_LINE_CFG = {
     "speed_end": 15,
     "target_val": 15,
     "kp": 1.0,
-    "time_sec": 1
+    "time_sec": 1,
 }
 
 # used for basic straight movement
@@ -113,9 +104,9 @@ MOVE_STRAIGHT_CFG = {
     "speed_start": 20,
     "speed_max": 50,
     "speed_end": 20,
-    "kp": .85,
-    "ki": .0,
-    "kd": 5.5
+    "kp": 0.85,
+    "ki": 0.0,
+    "kd": 5.5,
 }
 
 # used for turning (gyro/encoder based)
@@ -125,12 +116,10 @@ TURN_CFG = {
     "speed_max": 40,
     "speed_end": 15,
     "kp": 1.2,
-    "ki": .0,
-    "kd": 8.0
+    "ki": 0.0,
+    "kd": 8.0,
 }
 
 # used for lifting arm/gripper
 # ใช้สำหรับตั้งค่าการยกแขน/คีบ
-LIFT_CFG = {
-    "speed": 100
-}
+LIFT_CFG = {"speed": 100}
