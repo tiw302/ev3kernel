@@ -48,12 +48,10 @@ if __name__ == "__main__":
         # * |_| \_\____/|_| \_|
         # * >> run: write your robot logic and mission code here!!
 
-        robot.track_line_distance(55, speed=65)
-        # robot.move_straight(40, max_speed=60)
-        # robot.turn(90, max_speed=40)
-        # robot.turn(-90, max_speed=40)
-        # robot.turn(90, max_speed=40)
-        # robot.turn(-180, max_speed=40)
+        robot.lift_d(90)
+        wait(1000)
+        robot.lift_d(0)
+        wait(1000)
 
         # ! ._______________________________________________________________________________________.
         pass

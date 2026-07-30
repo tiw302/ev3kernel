@@ -107,17 +107,21 @@ MOVE_STRAIGHT_CFG = {
     "kp": 0.85,
     "ki": 0.0,
     "kd": 5.5,
+    "accel_frac": 0.25,
+    "decel_frac": 0.30,
 }
 
 # used for turning (gyro/encoder based)
 # ใช้สำหรับตั้งค่าการเลี้ยว
 TURN_CFG = {
-    "speed_start": 20,
+    "speed_start": 30,
     "speed_max": 40,
     "speed_end": 15,
-    "kp": 1.2,
+    "kp": 0.11,
     "ki": 0.0,
-    "kd": 8.0,
+    "kd": 15,
+    "accel_frac": 0.30,
+    "decel_frac": 0.35,
 }
 
 # used for lifting arm/gripper

@@ -122,8 +122,7 @@ class Robot:
     # >> setup core (ระบบตั้งค่าเริ่มต้น เช็คพอร์ตและเซ็นเซอร์)
     def __init__(self):
         self.hub = EV3Brick()
-        # disable default center-button kill so estop routes through stop_drive()
-        self.hub.system.set_stop_button(None)
+        self.hub.system.set_stop_button((Button.CENTER,))
         print("[ROBOT] --------------------------------------")
         print("[ROBOT] Initializing Ports...")
 
@@ -137,7 +136,6 @@ class Robot:
         self.sensor_3 = self._init_sensor(Port.S3, "S3")
         self.sensor_4 = self._init_sensor(Port.S4, "S4")
 
-        # dict lookup แทน getattr(self, f"sensor_{n}") — เร็วกว่าและไม่สร้าง string object ทุกครั้งที่เรียก
         self.sensor_map = {
             "1": self.sensor_1,
             "2": self.sensor_2,
@@ -195,8 +193,8 @@ class Robot:
         kp=MOVE_STRAIGHT_CFG["kp"],
         ki=MOVE_STRAIGHT_CFG["ki"],
         kd=MOVE_STRAIGHT_CFG["kd"],
-        accel_frac=0.25,
-        decel_frac=0.30,
+        accel_frac=MOVE_STRAIGHT_CFG["accel_frac"],
+        decel_frac=MOVE_STRAIGHT_CFG["decel_frac"],
     ):
         """
         drives straight by synchronizing left and right wheels using a pid controller.
@@ -277,7 +275,7 @@ class Robot:
 
             if pid_prev is None:
                 pid_prev = enc_diff
-            d_raw = -(enc_diff - pid_prev) * (1.0 / dt)
+            d_raw = enc_diff - pid_prev
             pid_d_filt = d_alpha * d_raw + d_alpha_i * pid_d_filt
             pid_prev = enc_diff
 
@@ -345,8 +343,8 @@ class Robot:
         kp=TURN_CFG["kp"],
         ki=TURN_CFG["ki"],
         kd=TURN_CFG["kd"],
-        accel_frac=0.30,
-        decel_frac=0.35,
+        accel_frac=TURN_CFG["accel_frac"],
+        decel_frac=TURN_CFG["decel_frac"],
     ):
         """
         performs a precise point-turn by spinning wheels in opposite directions.
@@ -424,7 +422,7 @@ class Robot:
 
             if pid_prev is None:
                 pid_prev = sync_err
-            d_raw = -(sync_err - pid_prev) * (1.0 / dt)
+            d_raw = sync_err - pid_prev
             pid_d_filt = d_alpha * d_raw + d_alpha_i * pid_d_filt
             pid_prev = sync_err
 
@@ -456,8 +454,8 @@ class Robot:
         pivot_side="right",
         max_speed=TURN_CFG["speed_max"],
         min_speed=TURN_CFG["speed_start"],
-        accel_frac=0.2,
-        decel_frac=0.2,
+        accel_frac=TURN_CFG["accel_frac"],
+        decel_frac=TURN_CFG["decel_frac"],
     ):
         """
         turns the robot by moving only one wheel (pivot turn) with trapezoidal profile.
@@ -685,11 +683,7 @@ class Robot:
             elif edge == "right":
                 error_raw = (0.5 - r_norm) * 200.0
             else:
-                # intersection smoothing: force straight if both sensors are dark
-                if l_norm < 0.35 and r_norm < 0.35:
-                    error_raw = 0.0
-                else:
-                    error_raw = (l_norm - r_norm) * 100.0
+                error_raw = (l_norm - r_norm) * 100.0
 
             error = error_raw
             # anti-jerk derivative suppression (ignores thick side-lines when in center mode)
@@ -765,17 +759,12 @@ class Robot:
             l_norm = clamp((l_val - b_raw) / span, 0.0, 1.0)
             r_norm = clamp((r_val - b_raw) / span, 0.0, 1.0)
 
-            # edge tracking mode
             if edge == "left":
                 error_raw = (l_norm - 0.5) * 200.0
             elif edge == "right":
                 error_raw = (0.5 - r_norm) * 200.0
             else:
-                # intersection smoothing: force straight if both sensors are dark
-                if l_norm < 0.35 and r_norm < 0.35:
-                    error_raw = 0.0
-                else:
-                    error_raw = (l_norm - r_norm) * 100.0
+                error_raw = (l_norm - r_norm) * 100.0
 
             error = error_raw
             # anti-jerk derivative suppression (ignores thick side-lines when in center mode)
@@ -846,11 +835,7 @@ class Robot:
             l_norm = clamp((l_val - b_raw) / span, 0.0, 1.0)
             r_norm = clamp((r_val - b_raw) / span, 0.0, 1.0)
 
-            # intersection smoothing: force straight if both sensors are dark
-            if l_norm < 0.35 and r_norm < 0.35:
-                error = 0.0
-            else:
-                error = (l_norm - r_norm) * 100.0
+            error = (l_norm - r_norm) * 100.0
 
             # anti-jerk derivative suppression
             error_jump = error - last_error
@@ -1111,12 +1096,12 @@ class Robot:
             (raw - self.black_raw) / (self.white_raw - self.black_raw) * 100, 0, 100
         )
 
-    def check_border(self, threshold=15):
+    def check_border(self, threshold=LINE_EDGE):
         return self.sensor_4.reflection() < threshold
 
-    def check_intersection(self, threshold=15):
+    def check_intersection(self, threshold=LINE_EDGE):
         return (
-            self.sensor_3.reflection() < threshold
+            self.sensor_1.reflection() < threshold
             and self.sensor_4.reflection() < threshold
         )
 
